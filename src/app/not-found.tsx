@@ -29,7 +29,7 @@ export default function NotFound() {
       <h1 className="text-2xl font-semibold text-white">Diese Seite gibt es nicht</h1>
       <Link
         href="/"
-        className="inline-flex rounded-full bg-[#1c1c1e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#222224]"
+        className="inline-flex rounded-full bg-[var(--bg-elevated)] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[var(--bg-soft)]"
       >
         Zur Overview
       </Link>

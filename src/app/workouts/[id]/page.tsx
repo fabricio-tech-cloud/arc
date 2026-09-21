@@ -109,7 +109,7 @@ export default function WorkoutDetailPage() {
         <button
           type="button"
           onClick={removeWorkout}
-          className="rounded-md border border-[var(--danger)]/40 px-3 py-1.5 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/10"
+          className="rounded-[1.75rem] border border-[var(--danger)]/40 px-3 py-1.5 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/10"
         >
           Löschen
         </button>
@@ -119,19 +119,19 @@ export default function WorkoutDetailPage() {
 
       <form
         onSubmit={addExercise}
-        className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-4 sm:grid-cols-[2fr_1fr_auto]"
+        className="grid gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 sm:grid-cols-[2fr_1fr_auto]"
       >
         <input
           value={exName}
           onChange={(e) => setExName(e.target.value)}
           placeholder="Übung (z.B. Bankdrücken)"
           required
-          className="rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+          className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
         />
         <select
           value={muscle}
           onChange={(e) => setMuscle(e.target.value)}
-          className="rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+          className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
         >
           {TRAINING_GROUPS.map((g) => (
             <option key={g} value={g}>
@@ -139,7 +139,7 @@ export default function WorkoutDetailPage() {
             </option>
           ))}
         </select>
-        <button type="submit" className="arc-chrome rounded-md px-4 py-2 font-semibold">
+        <button type="submit" className="arc-chrome rounded-[1.75rem] px-4 py-2 font-semibold">
           + Übung
         </button>
       </form>
@@ -153,7 +153,7 @@ export default function WorkoutDetailPage() {
           return (
             <article
               key={ex.id}
-              className="rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60 p-4"
+              className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4"
             >
               <div className="mb-3 flex items-baseline justify-between gap-2">
                 <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">{ex.name}</h2>
@@ -181,7 +181,7 @@ export default function WorkoutDetailPage() {
                   onChange={(e) =>
                     setSetDraft((p) => ({ ...p, [ex.id]: { ...draft, reps: e.target.value } }))
                   }
-                  className="rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+                  className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
                 <input
                   type="number"
@@ -191,7 +191,7 @@ export default function WorkoutDetailPage() {
                   onChange={(e) =>
                     setSetDraft((p) => ({ ...p, [ex.id]: { ...draft, weight: e.target.value } }))
                   }
-                  className="rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+                  className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
                 <input
                   type="number"
@@ -200,12 +200,12 @@ export default function WorkoutDetailPage() {
                   onChange={(e) =>
                     setSetDraft((p) => ({ ...p, [ex.id]: { ...draft, rir: e.target.value } }))
                   }
-                  className="rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+                  className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
                 <button
                   type="button"
                   onClick={() => addSet(ex.id)}
-                  className="rounded-md border border-[var(--accent)]/40 px-2 py-1.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
+                  className="rounded-[1.75rem] border border-[var(--accent)]/40 px-2 py-1.5 text-sm font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
                 >
                   + Set
                 </button>

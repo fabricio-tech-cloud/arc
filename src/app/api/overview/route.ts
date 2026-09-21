@@ -72,7 +72,7 @@ const DAY_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 export async function GET() {
   try {
     const db = sql();
-    const since90 = daysAgoISO(90);
+    const sinceHeat = daysAgoISO(400);
     const since7 = daysAgoISO(7);
     const weekStart = startOfWeekISO();
     const weekStartISO = toISODate(weekStart);
@@ -108,7 +108,7 @@ export async function GET() {
     const heatRows = await db`
       SELECT w.date::text AS date, count(*)::int AS count
       FROM workouts w
-      WHERE w.date >= ${since90}
+      WHERE w.date >= ${sinceHeat}
       GROUP BY w.date
       ORDER BY w.date
     `;

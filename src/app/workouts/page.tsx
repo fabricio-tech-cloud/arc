@@ -149,11 +149,11 @@ export default function WorkoutsPage() {
             return (
               <div
                 key={g.key}
-                className="relative rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60 p-3 text-center transition hover:border-[var(--accent)]/40"
+                className="relative rounded-[1.75rem] bg-[var(--bg-elevated)] p-3 text-center transition hover:bg-[var(--bg-soft)]"
               >
                 <Link
                   href={groupPath(g.key)}
-                  className="absolute inset-0 z-10 rounded-xl"
+                  className="absolute inset-0 z-10 rounded-[1.75rem]"
                   aria-label={`${g.label} — Übungen`}
                 />
                 <p
@@ -180,7 +180,7 @@ export default function WorkoutsPage() {
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">Sessions</h2>
         <form
           onSubmit={onCreate}
-          className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-4 sm:grid-cols-[1fr_2fr_auto]"
+          className="grid gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 sm:grid-cols-[1fr_2fr_auto]"
         >
           <label className="block text-sm">
             <span className="mb-1 block text-[var(--muted)]">Datum</span>
@@ -188,7 +188,7 @@ export default function WorkoutsPage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
               required
             />
           </label>
@@ -198,14 +198,14 @@ export default function WorkoutsPage() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Push day, gute Energie…"
-              className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
             />
           </label>
           <div className="flex items-end">
             <button
               type="submit"
               disabled={busy}
-              className="arc-chrome w-full rounded-md px-4 py-2 font-semibold disabled:opacity-60 sm:w-auto"
+              className="arc-chrome w-full rounded-[1.75rem] px-4 py-2 font-semibold disabled:opacity-60 sm:w-auto"
             >
               {busy ? "…" : "Anlegen"}
             </button>
@@ -214,7 +214,7 @@ export default function WorkoutsPage() {
 
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
-        <ul className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60">
+        <ul className="divide-y divide-white/8 rounded-[1.75rem] bg-[var(--bg-elevated)]">
           {workouts.length === 0 && (
             <li className="px-4 py-6 text-[var(--muted)]">Noch leer — erstes Workout oben anlegen.</li>
           )}

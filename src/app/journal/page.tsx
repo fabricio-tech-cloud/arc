@@ -1,26 +1,144 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { FormEvent, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { GROUP_LABELS, resolveMuscleGroup, type MuscleGroupKey } from "@/lib/muscles";
 
 type Entry = {
   id: string;
   date: string;
-  mood: number | null;
   sleep_hours: number | null;
-  energy: number | null;
   notes: string | null;
 };
 
+type DayWorkout = {
+  id: string;
+  date: string;
+  notes: string | null;
+  completed: boolean;
+  duration_minutes: number | null;
+  exercise_count: number;
+  muscle_groups: (string | null)[];
+};
+
+function formatEntryDate(raw: string) {
+  return raw.slice(0, 10);
+}
+
+function workoutTitle(groups: (string | null)[], notes: string | null) {
+  const labels = [
+    ...new Set(
+      groups
+        .map((g) => resolveMuscleGroup(g))
+        .filter((g): g is MuscleGroupKey => !!g)
+        .map((g) => GROUP_LABELS[g]),
+    ),
+  ];
+  if (labels.length) return labels.join(" + ");
+  if (notes?.trim()) return notes.trim();
+  return "Workout";
+}
+
+const DELETE_W = 76;
+
+function SwipeDeleteRow({
+  open,
+  onOpenChange,
+  onDelete,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const startOffset = useRef(0);
+  const axis = useRef<"h" | "v" | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (!dragging) setOffset(open ? -DELETE_W : 0);
+  }, [open, dragging]);
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    startX.current = t.clientX;
+    startY.current = t.clientY;
+    startOffset.current = open ? -DELETE_W : 0;
+    axis.current = null;
+    setDragging(true);
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (!dragging) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX.current;
+    const dy = t.clientY - startY.current;
+    if (!axis.current) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      axis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+    }
+    if (axis.current !== "h") return;
+    e.preventDefault();
+    const next = Math.min(0, Math.max(-DELETE_W, startOffset.current + dx));
+    setOffset(next);
+  }
+
+  function onTouchEnd() {
+    if (!dragging) return;
+    setDragging(false);
+    if (axis.current !== "h") {
+      setOffset(open ? -DELETE_W : 0);
+      return;
+    }
+    const shouldOpen = offset < -DELETE_W / 2;
+    onOpenChange(shouldOpen);
+    setOffset(shouldOpen ? -DELETE_W : 0);
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-y-0 right-0 flex" style={{ width: DELETE_W }}>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex h-full w-full items-center justify-center bg-[#ff3b30] text-[13px] font-semibold text-white"
+        >
+          Löschen
+        </button>
+      </div>
+      <div
+        className={`relative bg-[var(--bg-elevated)] px-4 py-3 touch-pan-y ${
+          dragging ? "" : "transition-transform duration-200 ease-out"
+        }`}
+        style={{ transform: `translateX(${offset}px)` }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function JournalPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [dayWorkouts, setDayWorkouts] = useState<DayWorkout[]>([]);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [mood, setMood] = useState("7");
   const [sleep, setSleep] = useState("7.5");
-  const [energy, setEnergy] = useState("7");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const loadJournal = useCallback(() => {
     fetch("/api/journal")
       .then(async (res) => {
         const json = await res.json();
@@ -30,9 +148,23 @@ export default function JournalPage() {
       .catch((err) => setError(err.message));
   }, []);
 
+  const loadDayWorkouts = useCallback((forDate: string) => {
+    fetch(`/api/workouts?date=${encodeURIComponent(forDate)}`)
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed");
+        setDayWorkouts(json);
+      })
+      .catch((err) => setError(err.message));
+  }, []);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    loadJournal();
+  }, [loadJournal]);
+
+  useEffect(() => {
+    loadDayWorkouts(date);
+  }, [date, loadDayWorkouts]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -41,9 +173,7 @@ export default function JournalPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date,
-        mood: Number(mood),
         sleep_hours: Number(sleep),
-        energy: Number(energy),
         notes: notes || null,
       }),
     });
@@ -53,16 +183,53 @@ export default function JournalPage() {
       return;
     }
     setNotes("");
-    load();
+    loadJournal();
+  }
+
+  async function removeEntry(id: string) {
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/journal/${id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed");
+      setConfirmId(null);
+      setSwipeOpenId(null);
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function patchWorkout(
+    id: string,
+    patch: { completed?: boolean; notes?: string | null; duration_minutes?: number | null },
+  ) {
+    setSavingId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workouts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed");
+      setDayWorkouts((prev) => prev.map((w) => (w.id === id ? { ...w, ...json } : w)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setSavingId(null);
+    }
   }
 
   return (
     <div className="animate-rise space-y-8">
-      <p className="text-[var(--muted)]">Mood, Schlaf, Energie — täglich festhalten.</p>
-
       <form
         onSubmit={onSubmit}
-        className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-4 sm:grid-cols-2"
+        className="grid gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 sm:grid-cols-2"
       >
         <label className="text-sm">
           <span className="mb-1 block text-[var(--muted)]">Datum</span>
@@ -70,7 +237,7 @@ export default function JournalPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
           />
         </label>
         <label className="text-sm">
@@ -80,29 +247,7 @@ export default function JournalPage() {
             step="0.1"
             value={sleep}
             onChange={(e) => setSleep(e.target.value)}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--muted)]">Mood (1–10)</span>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={mood}
-            onChange={(e) => setMood(e.target.value)}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--muted)]">Energie (1–10)</span>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={energy}
-            onChange={(e) => setEnergy(e.target.value)}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
           />
         </label>
         <label className="text-sm sm:col-span-2">
@@ -111,31 +256,175 @@ export default function JournalPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
           />
         </label>
         <button
           type="submit"
-          className="arc-chrome rounded-md px-4 py-2 font-semibold sm:col-span-2 sm:w-fit"
+          className="arc-chrome rounded-[1.75rem] px-4 py-2 font-semibold sm:col-span-2 sm:w-fit"
         >
           Speichern
         </button>
       </form>
 
+      <section className="space-y-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2
+            className="text-lg font-semibold"
+            style={{ fontFamily: '"Times New Roman", Times, serif' }}
+          >
+            Workouts
+          </h2>
+          <p className="text-[12px] tabular-nums text-white/35">{date}</p>
+        </div>
+
+        {dayWorkouts.length === 0 ? (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--muted)]">Keine Workouts an diesem Tag.</p>
+            <Link
+              href="/workouts"
+              className="inline-flex text-[13px] text-white/55 underline-offset-2 hover:text-white hover:underline"
+            >
+              Workout anlegen →
+            </Link>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {dayWorkouts.map((w) => {
+              const title = workoutTitle(w.muscle_groups ?? [], w.notes);
+              const busy = savingId === w.id;
+              return (
+                <li
+                  key={w.id}
+                  className={`space-y-3 rounded-[1.75rem] border border-white/8 p-3 ${
+                    w.completed ? "bg-emerald-500/8" : "bg-white/[0.03]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-medium text-white">{title}</p>
+                      <p className="mt-0.5 text-[12px] text-white/40">
+                        {w.exercise_count} Übungen
+                        {w.completed ? " · erledigt" : ""}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => patchWorkout(w.id, { completed: !w.completed })}
+                      className={`shrink-0 rounded-[1.75rem] px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                        w.completed
+                          ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+                          : "bg-white/8 text-white/70 hover:bg-white/12 hover:text-white"
+                      }`}
+                    >
+                      {w.completed ? "Erledigt" : "Erledigen"}
+                    </button>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-[1fr_7rem]">
+                    <label className="text-sm">
+                      <span className="mb-1 block text-[11px] text-white/40">Notiz</span>
+                      <input
+                        type="text"
+                        defaultValue={w.notes ?? ""}
+                        key={`${w.id}-notes-${w.notes ?? ""}`}
+                        disabled={busy}
+                        onBlur={(e) => {
+                          const next = e.target.value.trim() || null;
+                          if (next !== (w.notes ?? null)) {
+                            patchWorkout(w.id, { notes: next });
+                          }
+                        }}
+                        placeholder="Session-Notiz…"
+                        className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                      />
+                    </label>
+                    <label className="text-sm">
+                      <span className="mb-1 block text-[11px] text-white/40">Zeit (min)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={5}
+                        defaultValue={w.duration_minutes ?? ""}
+                        key={`${w.id}-dur-${w.duration_minutes ?? ""}`}
+                        disabled={busy}
+                        onBlur={(e) => {
+                          const raw = e.target.value.trim();
+                          const next = raw === "" ? null : Number(raw);
+                          if (next !== w.duration_minutes) {
+                            patchWorkout(w.id, { duration_minutes: next });
+                          }
+                        }}
+                        placeholder="—"
+                        className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm tabular-nums outline-none focus:border-[var(--accent)]"
+                      />
+                    </label>
+                  </div>
+
+                  <Link
+                    href={`/workouts/${w.id}`}
+                    className="inline-flex text-[12px] text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
+                  >
+                    Session öffnen →
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
-      <ul className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60">
+      <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
         {entries.map((e) => (
-          <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div>
-              <p className="font-semibold tabular-nums">{e.date}</p>
-              <p className="text-sm text-[var(--muted)]">{e.notes || "—"}</p>
-            </div>
-            <div className="flex gap-3 text-sm tabular-nums text-[var(--accent)]">
-              <span>Mood {e.mood ?? "—"}</span>
-              <span>Schlaf {e.sleep_hours ?? "—"}h</span>
-              <span>Energie {e.energy ?? "—"}</span>
-            </div>
+          <li key={e.id} className="border-b border-white/8 last:border-b-0">
+            {confirmId === e.id ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => {
+                      setConfirmId(null);
+                      setSwipeOpenId(null);
+                    }}
+                    className="rounded-[1.75rem] px-3 py-1.5 text-sm text-white/50 transition hover:bg-white/8 hover:text-white"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => removeEntry(e.id)}
+                    className="rounded-[1.75rem] bg-red-500/15 px-3 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/25 disabled:opacity-50"
+                  >
+                    {deleting ? "…" : "Entfernen"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <SwipeDeleteRow
+                open={swipeOpenId === e.id}
+                onOpenChange={(open) => setSwipeOpenId(open ? e.id : null)}
+                onDelete={() => {
+                  setSwipeOpenId(null);
+                  setConfirmId(e.id);
+                }}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold tabular-nums">{formatEntryDate(e.date)}</p>
+                    <p className="text-sm text-[var(--muted)]">{e.notes || "—"}</p>
+                  </div>
+                  <span className="text-sm tabular-nums text-[var(--accent)]">
+                    Schlaf {e.sleep_hours ?? "—"}h
+                  </span>
+                </div>
+              </SwipeDeleteRow>
+            )}
           </li>
         ))}
       </ul>

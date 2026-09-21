@@ -37,7 +37,7 @@ type Schedule = {
 };
 
 const inputClass =
-  "rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]";
+  "rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]";
 
 export default function SupplementsPage() {
   const [items, setItems] = useState<Supp[]>([]);
@@ -54,8 +54,13 @@ export default function SupplementsPage() {
   const [busy, setBusy] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [activeSuggest, setActiveSuggest] = useState(0);
+  const [catalogFilter, setCatalogFilter] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const suggestWrapRef = useRef<HTMLDivElement>(null);
   const unitWrapRef = useRef<HTMLDivElement>(null);
+  const filterWrapRef = useRef<HTMLDivElement>(null);
 
   function applyDose(value: string) {
     const parsed = parseDose(value);
@@ -95,6 +100,15 @@ export default function SupplementsPage() {
 
   const suggestions = useMemo(() => suggestCatalog(nameQuery, 6), [nameQuery]);
 
+  const catalogCategories = useMemo(() => {
+    return [...new Set(SUPPLEMENT_CATALOG.map((s) => s.category))];
+  }, []);
+
+  const filteredCatalog = useMemo(() => {
+    if (!catalogFilter) return SUPPLEMENT_CATALOG;
+    return SUPPLEMENT_CATALOG.filter((s) => s.category === catalogFilter);
+  }, [catalogFilter]);
+
   useEffect(() => {
     setActiveSuggest(0);
   }, [nameQuery]);
@@ -107,6 +121,9 @@ export default function SupplementsPage() {
       }
       if (!unitWrapRef.current?.contains(target)) {
         setUnitOpen(false);
+      }
+      if (!filterWrapRef.current?.contains(target)) {
+        setFilterOpen(false);
       }
     }
     document.addEventListener("mousedown", onPointerDown);
@@ -165,6 +182,22 @@ export default function SupplementsPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Failed");
     return json;
+  }
+
+  async function removeLog(id: string) {
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/supplements/${id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed");
+      setConfirmId(null);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function toggleDay(value: number) {
@@ -293,16 +326,12 @@ export default function SupplementsPage() {
   }
 
   return (
-    <div className="animate-rise space-y-10">
+    <div
+      className="animate-rise space-y-10"
+      style={{ fontFamily: '"Times New Roman", Times, serif' }}
+    >
       {/* Schedule card */}
-      <section className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-4">
-        <div>
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Planung</h2>
-          <p className="text-sm text-[var(--muted)]">
-            Supplement, Tage, Uhrzeit, Menge und Notiz — später mit einem Tap loggen.
-          </p>
-        </div>
-
+      <section className="space-y-4 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
         <form onSubmit={onSaveSchedule} className="grid gap-3">
           <div ref={suggestWrapRef} className="relative grid gap-1 text-sm">
             <label htmlFor="supp-name" className="text-[var(--muted)]">
@@ -336,7 +365,7 @@ export default function SupplementsPage() {
             {suggestOpen && suggestions.length > 0 && (
               <ul
                 role="listbox"
-                className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] shadow-lg"
+                className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-[1.75rem] bg-[var(--bg-elevated)] shadow-lg"
               >
                 {suggestions.map((s, i) => (
                   <li key={s.id}>
@@ -378,13 +407,13 @@ export default function SupplementsPage() {
           </div>
 
           {selected && (
-            <div className="flex items-center gap-3 rounded-lg bg-[var(--bg)]/60 px-3 py-2">
+            <div className="flex items-center gap-3 rounded-[1.75rem] bg-[var(--bg)]/60 px-3 py-2">
               <img
                 src={supplementImageSrc(selected.imageFile)}
                 alt=""
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-md object-cover"
+                className="h-10 w-10 rounded-[1.75rem] object-cover"
               />
               <p className="text-xs text-[var(--muted)] line-clamp-2">{selected.effect}</p>
             </div>
@@ -420,13 +449,13 @@ export default function SupplementsPage() {
             </div>
             <div className="grid gap-1 text-sm">
               <span className="text-[var(--muted)]">Menge / Dosis</span>
-              <div className="flex rounded-md border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
+              <div className="flex rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
                 <input
                   value={doseAmount}
                   onChange={(e) => setDoseAmount(e.target.value)}
                   placeholder="z.B. 5"
                   inputMode="decimal"
-                  className="min-w-0 flex-1 rounded-l-md bg-transparent px-3 py-2 outline-none"
+                  className="min-w-0 flex-1 rounded-l-[1.75rem] bg-transparent px-3 py-2 outline-none"
                 />
                 <div ref={unitWrapRef} className="relative shrink-0">
                   <button
@@ -434,7 +463,7 @@ export default function SupplementsPage() {
                     onClick={() => setUnitOpen((o) => !o)}
                     aria-haspopup="listbox"
                     aria-expanded={unitOpen}
-                    className="flex h-full min-w-[4.75rem] items-center justify-center gap-1 rounded-r-md border-l border-[var(--line)] px-2.5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg-soft)]"
+                    className="flex h-full min-w-[4.75rem] items-center justify-center gap-1 rounded-r-[1.75rem] border-l border-[var(--line)] px-2.5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg-soft)]"
                   >
                     {doseUnit}
                     <span className="text-[10px] text-[var(--muted)]" aria-hidden>
@@ -445,7 +474,7 @@ export default function SupplementsPage() {
                     <ul
                       role="listbox"
                       aria-label="Maßeinheit wählen"
-                      className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 max-h-64 min-w-[10rem] overflow-auto rounded-3xl p-1.5"
+                      className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 max-h-64 min-w-[10rem] overflow-auto rounded-[1.75rem] p-1.5"
                     >
                       {DOSE_UNITS.map((unit) => {
                         const active = unit === doseUnit;
@@ -499,7 +528,7 @@ export default function SupplementsPage() {
         </form>
 
         {schedules.length > 0 && (
-          <ul className="divide-y divide-[var(--line)] rounded-lg border border-[var(--line)]">
+          <ul className="divide-y divide-white/8">
             {schedules.map((s) => {
               const cat = s.catalog_id
                 ? findCatalogById(s.catalog_id)
@@ -514,10 +543,10 @@ export default function SupplementsPage() {
                       alt=""
                       width={36}
                       height={36}
-                      className="h-9 w-9 shrink-0 rounded-md object-cover"
+                      className="h-9 w-9 shrink-0 rounded-[1.75rem] object-cover"
                     />
                   ) : (
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
                       —
                     </span>
                   )}
@@ -534,7 +563,7 @@ export default function SupplementsPage() {
                         type="button"
                         disabled={busy || already}
                         onClick={() => logSchedule(s)}
-                        className="arc-chrome rounded-md px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                        className="arc-chrome rounded-[1.75rem] px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
                       >
                         {already ? "Geloggt" : "Loggen"}
                       </button>
@@ -559,7 +588,7 @@ export default function SupplementsPage() {
             type="button"
             disabled={busy}
             onClick={logAllDueToday}
-            className="w-full rounded-md border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg)] disabled:opacity-50"
+            className="w-full rounded-[1.75rem] border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg)] disabled:opacity-50"
           >
             Heute fällig loggen ({dueToday.length})
           </button>
@@ -569,19 +598,90 @@ export default function SupplementsPage() {
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Katalog</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Katalog</h2>
+          <div ref={filterWrapRef} className="relative">
+            <button
+              type="button"
+              aria-label="Katalog filtern"
+              aria-haspopup="listbox"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((o) => !o)}
+              className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
+                catalogFilter || filterOpen
+                  ? "text-white"
+                  : "text-white/45 hover:bg-white/8 hover:text-white/80"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M4 7h16M7 12h10M10 17h4" strokeLinecap="round" />
+              </svg>
+            </button>
+            {filterOpen && (
+              <ul
+                role="listbox"
+                aria-label="Kategorie filtern"
+                className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 min-w-[11rem] overflow-auto rounded-[1.75rem] p-1.5"
+              >
+                <li>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={catalogFilter === null}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setCatalogFilter(null);
+                      setFilterOpen(false);
+                    }}
+                    className={
+                      catalogFilter === null
+                        ? "arc-tab-active arc-tab-glow w-full rounded-full px-3 py-2 text-left text-sm font-semibold text-white"
+                        : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                    }
+                  >
+                    Alle
+                  </button>
+                </li>
+                {catalogCategories.map((cat) => {
+                  const active = cat === catalogFilter;
+                  return (
+                    <li key={cat}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setCatalogFilter(cat);
+                          setFilterOpen(false);
+                        }}
+                        className={
+                          active
+                            ? "arc-tab-active arc-tab-glow w-full rounded-full px-3 py-2 text-left text-sm font-semibold text-white"
+                            : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                        }
+                      >
+                        {cat}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
         <ul className="grid gap-3 sm:grid-cols-2">
-          {SUPPLEMENT_CATALOG.map((s) => (
+          {filteredCatalog.map((s) => (
             <li
               key={s.id}
-              className="flex gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-3"
+              className="flex gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-3"
             >
               <img
                 src={supplementImageSrc(s.imageFile)}
                 alt={s.name}
                 width={56}
                 height={56}
-                className="h-14 w-14 shrink-0 rounded-lg object-cover bg-[var(--bg-soft)]"
+                className="h-14 w-14 shrink-0 rounded-[1.75rem] object-cover bg-[var(--bg-soft)]"
               />
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -610,38 +710,74 @@ export default function SupplementsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Log</h2>
-        <ul className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60">
+        <h2 className="text-lg font-semibold">Log</h2>
+        <ul className="divide-y divide-white/8 rounded-[1.75rem] bg-[var(--bg-elevated)]">
           {items.length === 0 && (
             <li className="px-4 py-6 text-sm text-[var(--muted)]">Noch nichts geloggt.</li>
           )}
           {items.map((s) => {
             const cat = findCatalogByName(s.name);
             return (
-              <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                {cat ? (
-                  <img
-                    src={supplementImageSrc(cat.imageFile)}
-                    alt=""
-                    width={36}
-                    height={36}
-                    className="h-9 w-9 shrink-0 rounded-md object-cover bg-[var(--bg-soft)]"
-                  />
+              <li key={s.id} className="px-4 py-3">
+                {confirmId === s.id ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={deleting}
+                        onClick={() => setConfirmId(null)}
+                        className="rounded-[1.75rem] px-3 py-1.5 text-sm text-white/50 transition hover:bg-white/8 hover:text-white"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deleting}
+                        onClick={() => removeLog(s.id)}
+                        className="rounded-[1.75rem] bg-red-500/15 px-3 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/25 disabled:opacity-50"
+                      >
+                        {deleting ? "…" : "Entfernen"}
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
-                    —
-                  </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {cat ? (
+                      <img
+                        src={supplementImageSrc(cat.imageFile)}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="h-9 w-9 shrink-0 rounded-[1.75rem] object-cover bg-[var(--bg-soft)]"
+                      />
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
+                        —
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{s.name}</p>
+                      <p className="text-sm text-[var(--muted)]">
+                        {s.dose || "—"}
+                        {s.notes ? ` · ${s.notes}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-xs tabular-nums text-[var(--muted)]">
+                      {s.time ? new Date(s.time).toLocaleString() : "—"}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Eintrag entfernen"
+                      onClick={() => setConfirmId(s.id)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/35 transition hover:bg-white/8 hover:text-white/80"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{s.name}</p>
-                  <p className="text-sm text-[var(--muted)]">
-                    {s.dose || "—"}
-                    {s.notes ? ` · ${s.notes}` : ""}
-                  </p>
-                </div>
-                <span className="text-xs tabular-nums text-[var(--muted)]">
-                  {s.time ? new Date(s.time).toLocaleString() : "—"}
-                </span>
               </li>
             );
           })}

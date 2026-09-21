@@ -209,7 +209,7 @@ export function BodyMap({
         className={
           size === "lg"
             ? "min-h-[360px] flex-1"
-            : "pointer-events-none flex min-h-[132px] items-center justify-center overflow-hidden rounded-lg"
+            : "pointer-events-none flex min-h-[132px] items-center justify-center overflow-hidden rounded-[1.75rem]"
         }
       />
 

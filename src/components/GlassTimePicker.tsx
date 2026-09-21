@@ -62,7 +62,7 @@ export function GlassTimePicker({ value, onChange, className = "" }: GlassTimePi
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-left outline-none focus:border-[var(--accent)]"
+        className="flex w-full items-center justify-between rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-left outline-none focus:border-[var(--accent)]"
       >
         <span className="tabular-nums tracking-wide">{display}</span>
         <svg
@@ -82,7 +82,7 @@ export function GlassTimePicker({ value, onChange, className = "" }: GlassTimePi
         <div
           role="dialog"
           aria-label="Uhrzeit wählen"
-          className="arc-tabbar-glass absolute left-0 top-full z-30 mt-2 w-full min-w-[14rem] rounded-3xl p-3"
+          className="arc-tabbar-glass absolute left-0 top-full z-30 mt-2 w-full min-w-[14rem] rounded-[1.75rem] p-3"
         >
           <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-1">
             <div

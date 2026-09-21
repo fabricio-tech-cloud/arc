@@ -60,6 +60,12 @@ function sectionTitle(pathname: string) {
 export function AppNav() {
   const pathname = usePathname();
   const section = sectionTitle(pathname);
+  const activeIndex = Math.max(
+    0,
+    links.findIndex(
+      (link) => pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href)),
+    ),
+  );
 
   return (
     <>
@@ -83,18 +89,22 @@ export function AppNav() {
         className="arc-tabbar fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
         aria-label="Hauptnavigation"
       >
-        <div className="arc-tabbar-glass relative flex w-full max-w-[20rem] items-stretch justify-between gap-0.5 rounded-full px-1.5 py-1.5">
-          {links.map((link) => {
-            const active =
-              pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+        <div className="arc-tabbar-glass relative grid w-full max-w-[20rem] grid-cols-4 rounded-full p-1.5">
+          <span
+            aria-hidden
+            className="arc-tab-active pointer-events-none absolute inset-y-1.5 left-1.5 w-[calc((100%-0.75rem)/4)] rounded-full transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(${activeIndex * 100}%)` }}
+          />
+          {links.map((link, i) => {
+            const active = i === activeIndex;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative z-10 flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full px-1.5 py-1 text-[9px] font-medium tracking-wide transition ${
+                className={`relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-full px-1.5 py-1 text-[9px] font-medium tracking-wide transition-colors duration-300 ${
                   active
-                    ? "arc-tab-active text-white arc-tab-glow"
-                    : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                    ? "text-white arc-tab-glow"
+                    : "text-[var(--muted)] hover:text-[var(--text)]"
                 }`}
               >
                 <span className={active ? "opacity-100" : "opacity-80"}>{link.icon}</span>

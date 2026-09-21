@@ -105,7 +105,7 @@ export default function OverviewPage() {
   return (
     <div className="animate-rise mx-auto max-w-lg space-y-3">
       {error && (
-        <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)]">{error}</p>
+        <p className="rounded-[1.75rem] bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)]">{error}</p>
       )}
 
       <ThisWeekStrip days={data?.thisWeek ?? []} today={data?.today ?? null} />
@@ -115,7 +115,7 @@ export default function OverviewPage() {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href={primary ? `/workouts/${primary.id}` : "/workouts"}
-          className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.75rem] bg-[#1c1c1e] p-4 transition hover:bg-[#222224]"
+          className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
         >
           <div className="flex items-start justify-between">
             <ProgressRing value={primary?.index ?? (weekSessions || 0)} max={Math.max(4, data?.stats.workouts || 4)} />
@@ -133,7 +133,7 @@ export default function OverviewPage() {
 
         <Link
           href="/journal"
-          className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.75rem] bg-[#1c1c1e] p-4 transition hover:bg-[#222224]"
+          className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
         >
           <div className="flex items-start justify-between">
             <p className="text-[1.75rem] font-semibold leading-none tracking-tight text-white">
@@ -157,7 +157,7 @@ export default function OverviewPage() {
         </Link>
       </div>
 
-      <div className="rounded-[1.75rem] bg-[#1c1c1e] p-4">
+      <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
         <OverviewHeatmap heatMap={data?.heatMap ?? {}} />
         <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-4">
           <ProgressRing
@@ -176,7 +176,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-[1.75rem] bg-[#1c1c1e] px-5 py-5">
+      <div className="flex items-center justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] px-5 py-5">
         <div>
           <p className="text-[15px] font-medium text-white">Volume lifted</p>
           <p className="mt-0.5 text-[13px] text-white/40">Last 7 days</p>
@@ -192,7 +192,7 @@ export default function OverviewPage() {
 
       <Link
         href="/workouts"
-        className="flex min-h-[4.5rem] items-center justify-center rounded-[1.75rem] bg-[#1c1c1e] text-3xl text-white/35 transition hover:bg-[#222224] hover:text-white/60"
+        className="flex min-h-[4.5rem] items-center justify-center rounded-[1.75rem] bg-[var(--bg-elevated)] text-3xl text-white/35 transition hover:bg-[var(--bg-soft)] hover:text-white/60"
         aria-label="Neues Workout"
       >
         +

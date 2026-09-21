@@ -76,7 +76,7 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
           ← Workouts
         </Link>
         <div className="mt-4 flex items-center gap-4">
-          <div className="w-[7.5rem] shrink-0 rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60 p-2">
+          <div className="w-[7.5rem] shrink-0 rounded-[1.75rem] bg-[var(--bg-elevated)] p-2">
             <BodyMap
               bodyState={miniState}
               view={GROUP_VIEW[groupKey]}
@@ -105,13 +105,13 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
       {!data && !error && (
-        <p className="rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60 px-4 py-6 text-[var(--muted)]">
+        <p className="rounded-[1.75rem] bg-[var(--bg-elevated)] px-4 py-6 text-[var(--muted)]">
           Loading exercises…
         </p>
       )}
 
       {data && exercises.length === 0 && (
-        <p className="rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60 px-4 py-6 text-[var(--muted)]">
+        <p className="rounded-[1.75rem] bg-[var(--bg-elevated)] px-4 py-6 text-[var(--muted)]">
           No exercises for this group.
         </p>
       )}
@@ -127,7 +127,7 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
             >
               {focus}
             </h2>
-            <ul className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60">
+            <ul className="divide-y divide-white/8 rounded-[1.75rem] bg-[var(--bg-elevated)]">
               {items.map((ex) => (
                 <li key={ex.name} className="flex items-center justify-between gap-3 px-4 py-3.5">
                   <div className="min-w-0">

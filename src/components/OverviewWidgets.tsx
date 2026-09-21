@@ -81,7 +81,7 @@ export function ThisWeekStrip({
         : `Heute: ${todayTags.join(" · ")}`;
 
   return (
-    <div className="rounded-[1.75rem] bg-[#1c1c1e] p-4">
+    <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <p className="text-[15px] font-medium text-white">This week</p>
         <p className="text-[12px] text-white/40">{todayLabel}</p>
@@ -90,7 +90,7 @@ export function ThisWeekStrip({
         {days.map((day) => (
           <div
             key={day.date}
-            className={`flex min-h-[4.25rem] flex-col items-center rounded-2xl px-1 py-2 text-center transition ${
+            className={`flex min-h-[4.25rem] flex-col items-center rounded-[1.75rem] px-1 py-2 text-center transition ${
               day.isToday ? "bg-white/12 ring-1 ring-white/20" : "bg-white/[0.04]"
             }`}
           >
@@ -189,11 +189,11 @@ export function TodayCard({
         (workout?.abbr.length ? workout.abbr.join(" · ") : "Open session");
 
   return (
-    <div className="overflow-hidden rounded-[1.75rem] bg-[#1c1c1e]">
+    <div className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-5 text-left transition hover:bg-[#222224]"
+        className="flex w-full items-center justify-between gap-3 px-5 py-5 text-left transition hover:bg-[var(--bg-soft)]"
         aria-expanded={open}
       >
         <div className="min-w-0">
@@ -297,10 +297,10 @@ export function TodayCard({
                         alt=""
                         width={32}
                         height={32}
-                        className="h-8 w-8 shrink-0 rounded-md object-cover bg-white/8"
+                        className="h-8 w-8 shrink-0 rounded-[1.75rem] object-cover bg-white/8"
                       />
                     ) : (
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/8 text-[10px] text-white/35">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[1.75rem] bg-white/8 text-[10px] text-white/35">
                         —
                       </span>
                     )}
@@ -346,59 +346,140 @@ export function TodayCard({
   );
 }
 
+function localTodayISO() {
+  const local = new Date();
+  return `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}`;
+}
+
 function monthGrid(year: number, monthIndex: number, heatMap: Record<string, number>) {
   const first = new Date(year, monthIndex, 1);
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
   const startPad = (first.getDay() + 6) % 7; // Monday start
-  const cells: { key: string; active: boolean; empty?: boolean }[] = [];
+  const cells: { key: string; active: boolean; empty?: boolean; isToday?: boolean }[] = [];
   for (let i = 0; i < startPad; i++) cells.push({ key: `pad-${i}`, active: false, empty: true });
+
+  const todayISO = localTodayISO();
+
   for (let d = 1; d <= daysInMonth; d++) {
     const date = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    cells.push({ key: date, active: (heatMap[date] ?? 0) > 0 });
+    cells.push({
+      key: date,
+      active: (heatMap[date] ?? 0) > 0,
+      isToday: date === todayISO,
+    });
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push({ key: `trail-${cells.length}`, active: false, empty: true });
   }
   return cells;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "Januar",
+  "Februar",
+  "März",
+  "April",
+  "Mai",
+  "Juni",
+  "Juli",
+  "August",
+  "September",
+  "Oktober",
+  "November",
+  "Dezember",
+];
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
 export function OverviewHeatmap({ heatMap }: { heatMap: Record<string, number> }) {
   const now = new Date();
-  const months = [2, 1, 0].map((offset) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-    return { year: d.getFullYear(), month: d.getMonth(), label: MONTHS[d.getMonth()] };
-  });
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+
+  const cells = monthGrid(year, month, heatMap);
+  const atCurrent =
+    year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth());
+
+  function goPrev() {
+    setMonth((m) => {
+      if (m === 0) {
+        setYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }
+
+  function goNext() {
+    if (atCurrent) return;
+    setMonth((m) => {
+      if (m === 11) {
+        setYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }
 
   return (
-    <div className="grid w-full grid-cols-3 gap-3">
-      {months.map((m) => {
-        const cells = monthGrid(m.year, m.month, heatMap);
-        return (
-          <div key={`${m.year}-${m.month}`} className="min-w-0">
-            <p className="mb-1.5 text-[11px] text-white/45">{m.label}</p>
-            <div className="mb-1 grid w-full grid-cols-7 gap-[3px]">
-              {WEEKDAYS.map((day) => (
-                <span
-                  key={day}
-                  className="text-center text-[8px] leading-none text-white/35"
-                >
-                  {day}
-                </span>
-              ))}
-            </div>
-            <div className="grid w-full grid-cols-7 gap-[3px]">
-              {cells.map((cell) => (
-                <span
-                  key={cell.key}
-                  className={`aspect-square w-full rounded-full ${
-                    cell.empty ? "opacity-0" : cell.active ? "bg-white" : "bg-white/15"
-                  }`}
-                />
-              ))}
-            </div>
+    <div className="w-full">
+      <p className="mb-2 text-center text-[13px] font-medium text-white/70">
+        {MONTHS[month]} <span className="text-white/35">{year}</span>
+      </p>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Vorheriger Monat"
+          onClick={goPrev}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white"
+        >
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M15 6 9 12l6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 grid grid-cols-7 gap-px">
+            {WEEKDAYS.map((day) => (
+              <span key={day} className="text-center text-[8px] leading-none text-white/30">
+                {day}
+              </span>
+            ))}
           </div>
-        );
-      })}
+          <div className="grid grid-cols-7 gap-px">
+            {cells.map((cell) => (
+              <div key={cell.key} className="flex items-center justify-center py-[2px]">
+                {cell.empty ? (
+                  <span className="h-1.5 w-1.5" aria-hidden />
+                ) : (
+                  <span
+                    title={cell.key}
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      cell.active
+                        ? "bg-white"
+                        : cell.isToday
+                          ? "bg-white/50"
+                          : "bg-white/15"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Nächster Monat"
+          disabled={atCurrent}
+          onClick={goNext}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
+        >
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

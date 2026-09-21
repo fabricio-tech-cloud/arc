@@ -48,3 +48,48 @@ export async function DELETE(_request: Request, { params }: Params) {
     );
   }
 }
+
+export async function PATCH(request: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const db = sql();
+
+    const [existing] = await db`SELECT * FROM workouts WHERE id = ${id}`;
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const completed =
+      typeof body.completed === "boolean" ? body.completed : (existing.completed as boolean);
+    const notes =
+      body.notes !== undefined ? (body.notes as string | null) : (existing.notes as string | null);
+    const duration_minutes =
+      body.duration_minutes !== undefined
+        ? body.duration_minutes === null || body.duration_minutes === ""
+          ? null
+          : Number(body.duration_minutes)
+        : (existing.duration_minutes as number | null);
+
+    if (duration_minutes != null && (!Number.isFinite(duration_minutes) || duration_minutes < 0)) {
+      return NextResponse.json({ error: "Invalid duration" }, { status: 400 });
+    }
+
+    const [row] = await db`
+      UPDATE workouts
+      SET
+        completed = ${completed},
+        notes = ${notes},
+        duration_minutes = ${duration_minutes}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+
+    return NextResponse.json(row);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to update workout" },
+      { status: 500 },
+    );
+  }
+}
