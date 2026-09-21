@@ -58,9 +58,28 @@ function relativeJournal(date: string | undefined) {
   return `vor ${days} Tagen`;
 }
 
-export default function HomePage() {
+/** App entry at `/` — Overview is the start page. */
+export default function OverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // #region agent log
+  useEffect(() => {
+    fetch("http://127.0.0.1:7581/ingest/071442a9-190c-4bcb-8cac-9d7d41291d6c", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "15a754" },
+      body: JSON.stringify({
+        sessionId: "15a754",
+        runId: "post-fix",
+        hypothesisId: "A",
+        location: "page.tsx:OverviewPage",
+        message: "Overview start page mounted at /",
+        data: { path: window.location.pathname },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, []);
+  // #endregion
 
   useEffect(() => {
     fetch("/api/overview")
