@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { BodyState, MuscleId } from "body-muscles";
 import { BodyMap } from "@/components/BodyMap";
 import {
@@ -10,6 +11,8 @@ import {
   TRAINING_GROUPS,
   bodyStateForGroupOnly,
   bodyStateFromGroupCounts,
+  groupPath,
+  muscleIdsForGroup,
   resolveGroupFromMuscleId,
   type MuscleGroupKey,
 } from "@/lib/muscles";
@@ -45,9 +48,9 @@ type WeekPayload = {
 };
 
 export default function WorkoutsPage() {
+  const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [week, setWeek] = useState<WeekPayload | null>(null);
-  const [selected, setSelected] = useState<MuscleGroupKey | null>(null);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,12 +88,7 @@ export default function WorkoutsPage() {
     return c;
   }, [week]);
 
-  const mainState = useMemo(
-    () => bodyStateFromGroupCounts(counts, selected),
-    [counts, selected],
-  );
-
-  const selectedGroup = week?.groups.find((g) => g.key === selected) ?? null;
+  const mainState = useMemo(() => bodyStateFromGroupCounts(counts), [counts]);
 
   const groupCards = week?.groups ??
     TRAINING_GROUPS.map((key) => ({
@@ -125,20 +123,12 @@ export default function WorkoutsPage() {
 
   function onMuscleClick(id: MuscleId) {
     const group = resolveGroupFromMuscleId(id);
-    if (group) setSelected(group);
+    if (group) router.push(groupPath(group));
   }
 
   return (
     <div className="animate-rise space-y-8">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold">Workouts</h1>
-        <p className="mt-1 text-[var(--muted)]">
-          Wochenvolumen auf der Muskelkarte · ab {week?.weekStart ?? "…"} · {week?.totalSets ?? 0}{" "}
-          Sets
-        </p>
-      </div>
-
-      <section className="rounded-2xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-4 sm:p-6">
+      <section className="p-0 sm:p-0">
         <BodyMap bodyState={mainState} size="lg" showHint onMuscleClick={onMuscleClick} />
         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
           <span>Intensität 0–10 = Sets diese Woche</span>
@@ -147,103 +137,44 @@ export default function WorkoutsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl font-bold">
+        <h2
+          className="mb-3 text-center text-xl font-normal"
+          style={{ fontFamily: '"Times New Roman", Times, serif' }}
+        >
           Muskelgruppen
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {groupCards.map((g) => {
-            const active = selected === g.key;
-            const miniState = bodyStateForGroupOnly(
-              g.key,
-              g.intensity > 0 ? g.intensity : 2,
-              active,
-            );
+            const miniState = bodyStateForGroupOnly(g.key, g.intensity > 0 ? g.intensity : 2);
             return (
-              <button
+              <div
                 key={g.key}
-                type="button"
-                onClick={() => setSelected(active ? null : g.key)}
-                className={`rounded-xl border p-3 text-left transition ${
-                  active
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                    : "border-[var(--line)] bg-[var(--bg-elevated)]/60 hover:border-[var(--accent)]/40"
-                }`}
+                className="relative rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/60 p-3 text-center transition hover:border-[var(--accent)]/40"
               >
+                <Link
+                  href={groupPath(g.key)}
+                  className="absolute inset-0 z-10 rounded-xl"
+                  aria-label={`${g.label} — Übungen`}
+                />
+                <p
+                  className="mb-2 text-base font-normal text-[var(--text)]"
+                  style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                >
+                  {g.label}
+                </p>
                 <BodyMap
                   bodyState={miniState}
                   view={GROUP_VIEW[g.key]}
                   size="sm"
                   showToggle={false}
                   interactive={false}
+                  focusIds={muscleIdsForGroup(g.key)}
                 />
-                <div className="mt-2">
-                  <p className="text-sm font-semibold">{g.label}</p>
-                  <p className="text-xs tabular-nums text-[var(--muted)]">
-                    Intensität {g.intensity}/10 · {g.setCount} Sets
-                  </p>
-                </div>
-              </button>
+              </div>
             );
           })}
         </div>
       </section>
-
-      {selectedGroup && (
-        <section className="rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)]/70 p-4 sm:p-5">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
-              Übungen · {selectedGroup.label}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
-            >
-              Schließen
-            </button>
-          </div>
-
-          {selectedGroup.exercises.length > 0 ? (
-            <ul className="divide-y divide-[var(--line)]">
-              {selectedGroup.exercises.map((ex) => (
-                <li key={ex.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <div>
-                    <p className="font-medium">{ex.name}</p>
-                    <p className="text-xs tabular-nums text-[var(--muted)]">{ex.date}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs tabular-nums text-[var(--accent)]">
-                      {ex.set_count} Sets
-                    </span>
-                    <Link
-                      href={`/workouts/${ex.workout_id}`}
-                      className="text-xs text-[var(--muted)] hover:text-[var(--accent)]"
-                    >
-                      Session →
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div>
-              <p className="mb-2 text-sm text-[var(--muted)]">
-                Diese Woche noch keine geloggten Übungen — Vorschläge:
-              </p>
-              <ul className="flex flex-wrap gap-2">
-                {selectedGroup.suggestions.map((name) => (
-                  <li
-                    key={name}
-                    className="rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-1 text-sm"
-                  >
-                    {name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
 
       <section className="space-y-4">
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">Sessions</h2>
@@ -274,7 +205,7 @@ export default function WorkoutsPage() {
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-md bg-[var(--accent)] px-4 py-2 font-semibold text-[#0e1110] disabled:opacity-60 sm:w-auto"
+              className="arc-chrome w-full rounded-md px-4 py-2 font-semibold disabled:opacity-60 sm:w-auto"
             >
               {busy ? "…" : "Anlegen"}
             </button>

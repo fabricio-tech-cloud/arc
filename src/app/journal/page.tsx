@@ -58,10 +58,7 @@ export default function JournalPage() {
 
   return (
     <div className="animate-rise space-y-8">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold">Journal</h1>
-        <p className="mt-1 text-[var(--muted)]">Mood, Schlaf, Energie — täglich festhalten.</p>
-      </div>
+      <p className="text-[var(--muted)]">Mood, Schlaf, Energie — täglich festhalten.</p>
 
       <form
         onSubmit={onSubmit}
@@ -119,7 +116,7 @@ export default function JournalPage() {
         </label>
         <button
           type="submit"
-          className="rounded-md bg-[var(--accent)] px-4 py-2 font-semibold text-[#0e1110] sm:col-span-2 sm:w-fit"
+          className="arc-chrome rounded-md px-4 py-2 font-semibold sm:col-span-2 sm:w-fit"
         >
           Speichern
         </button>

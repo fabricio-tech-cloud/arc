@@ -139,7 +139,7 @@ export default function WorkoutDetailPage() {
             </option>
           ))}
         </select>
-        <button type="submit" className="rounded-md bg-[var(--accent)] px-4 py-2 font-semibold text-[#0e1110]">
+        <button type="submit" className="arc-chrome rounded-md px-4 py-2 font-semibold">
           + Übung
         </button>
       </form>

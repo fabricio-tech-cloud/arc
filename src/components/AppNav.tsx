@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GROUP_LABELS, parseGroupParam } from "@/lib/muscles";
 
 const links = [
   {
@@ -44,19 +45,38 @@ const links = [
   },
 ];
 
+function sectionTitle(pathname: string) {
+  if (pathname.startsWith("/workouts/groups/")) {
+    const slug = pathname.split("/")[3];
+    const group = parseGroupParam(slug);
+    if (group) return GROUP_LABELS[group];
+  }
+  if (pathname.startsWith("/workouts")) return "Workouts";
+  if (pathname.startsWith("/journal")) return "Journal";
+  if (pathname.startsWith("/supplements")) return "Supplements";
+  return "Overview";
+}
+
 export function AppNav() {
   const pathname = usePathname();
+  const section = sectionTitle(pathname);
 
   return (
     <>
-      <header className="animate-rise flex items-center justify-center pb-2">
+      <header className="animate-rise flex flex-col items-center justify-center pb-2">
         <Link
           href="/"
-          className="text-2xl font-normal text-[var(--text)]"
+          className="text-2xl font-normal tracking-[0.08em] text-[var(--text)] uppercase"
           style={{ fontFamily: '"Times New Roman", Times, serif' }}
         >
-          Arc
+          ARC
         </Link>
+        <p
+          className="mt-0.5 text-xs font-normal tracking-wide text-[var(--muted)]"
+          style={{ fontFamily: '"Times New Roman", Times, serif' }}
+        >
+          {section}
+        </p>
       </header>
 
       <nav

@@ -6,7 +6,12 @@ import {
   OverviewCardMenu,
   OverviewHeatmap,
   ProgressRing,
+  ThisWeekStrip,
+  TodayCard,
+  type TodayPlan,
+  type WeekDay,
 } from "@/components/OverviewWidgets";
+import { supplementImageSrc } from "@/lib/supplements";
 
 type RecentWorkout = {
   id: string;
@@ -35,6 +40,9 @@ type Overview = {
     sleep_hours: number | null;
     energy: number | null;
   } | null;
+  thisWeek: WeekDay[];
+  today: WeekDay | null;
+  todayPlan: TodayPlan | null;
 };
 
 function formatVolume(n: number) {
@@ -80,6 +88,10 @@ export default function HomePage() {
       {error && (
         <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)]">{error}</p>
       )}
+
+      <ThisWeekStrip days={data?.thisWeek ?? []} today={data?.today ?? null} />
+
+      <TodayCard plan={data?.todayPlan ?? null} supplementImageSrc={supplementImageSrc} />
 
       <div className="grid grid-cols-2 gap-3">
         <Link
