@@ -13,7 +13,6 @@ import {
   bodyStateForGroupOnly,
   bodyStateFromGroupCounts,
   groupPath,
-  muscleIdsForGroup,
   resolveGroupFromMuscleId,
   type MuscleGroupKey,
 } from "@/lib/muscles";
@@ -153,7 +152,7 @@ export default function WorkoutsPage() {
         <BodyMap bodyState={mainState} size="lg" showHint onMuscleClick={onMuscleClick} />
         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
           <span>Intensität 0–10 = Sets diese Woche</span>
-          <span className="h-2 w-16 rounded-full bg-gradient-to-r from-slate-500 via-amber-400 to-red-500" />
+          <span className="h-2 w-16 rounded-full bg-gradient-to-r from-[#f5f3ff] via-[#a78bfa] to-[#4c2a82]" />
         </div>
       </section>
 
@@ -189,7 +188,6 @@ export default function WorkoutsPage() {
                   size="sm"
                   showToggle={false}
                   interactive={false}
-                  focusIds={muscleIdsForGroup(g.key)}
                 />
               </div>
             );

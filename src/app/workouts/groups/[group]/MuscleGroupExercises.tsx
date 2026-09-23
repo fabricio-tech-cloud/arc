@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { BodyMap } from "@/components/BodyMap";
+import { SwipeBack } from "@/components/SwipeBack";
 import {
   EQUIPMENT_LABELS,
   EQUIPMENT_TYPES,
@@ -12,7 +14,6 @@ import {
   REGION_LABELS,
   TRAINING_FOCUSES,
   bodyStateForGroupOnly,
-  muscleIdsForGroup,
   type Equipment,
   type ExerciseRegion,
   type MuscleGroupKey,
@@ -52,10 +53,12 @@ function equipmentLabel(opt: EquipmentOption) {
 }
 
 export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGroupKey }) {
+  const router = useRouter();
   const [data, setData] = useState<GroupPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusOption>("all");
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentOption>("all");
+  const [addingName, setAddingName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,21 +132,61 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
     return map;
   }, [filtered]);
 
+  async function addExerciseToToday(name: string) {
+    if (addingName) return;
+    setAddingName(name);
+    setError(null);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const listRes = await fetch(`/api/workouts?date=${encodeURIComponent(today)}`);
+      const listJson = await listRes.json();
+      if (!listRes.ok) throw new Error(listJson.error || "Failed");
+
+      let workoutId: string | null =
+        Array.isArray(listJson) && listJson[0] ? String(listJson[0].id) : null;
+
+      if (!workoutId) {
+        const createRes = await fetch("/api/workouts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date: today }),
+        });
+        const createJson = await createRes.json();
+        if (!createRes.ok) throw new Error(createJson.error || "Failed");
+        workoutId = String(createJson.id);
+      }
+
+      const addRes = await fetch("/api/exercises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workout_id: workoutId,
+          name,
+          muscle_group: groupKey,
+        }),
+      });
+      const addJson = await addRes.json();
+      if (!addRes.ok) throw new Error(addJson.error || "Failed");
+
+      router.push(`/workouts/${workoutId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+      setAddingName(null);
+    }
+  }
+
   return (
     <div className="animate-rise space-y-8">
+      <SwipeBack href="/workouts" />
       <div>
-        <Link href="/workouts" className="text-sm text-[var(--muted)] hover:text-[var(--accent)]">
-          ← Workouts
-        </Link>
-        <div className="mt-4 flex items-center gap-4">
-          <div className="w-[7.5rem] shrink-0 rounded-[1.75rem] bg-[var(--bg-elevated)] p-2">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="w-[7.5rem]">
             <BodyMap
               bodyState={miniState}
               view={GROUP_VIEW[groupKey]}
               size="sm"
               showToggle={false}
               interactive={false}
-              focusIds={muscleIdsForGroup(groupKey)}
             />
           </div>
           <div>
@@ -204,12 +247,14 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
               title={REGION_LABELS[region]}
               items={items}
               showEquipment={hasEquipment}
+              addingName={addingName}
+              onAdd={addExerciseToToday}
             />
           );
         })}
 
       {hasRegions && byRegion.Other.length > 0 && (
-        <ExerciseSection title="Weitere" items={byRegion.Other} showEquipment={hasEquipment} />
+        <ExerciseSection title="Weitere" items={byRegion.Other} showEquipment={hasEquipment} addingName={addingName} onAdd={addExerciseToToday} />
       )}
 
       {!hasRegions &&
@@ -222,6 +267,8 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
               title={FOCUS_LABELS[focus]}
               items={items}
               showEquipment={hasEquipment}
+              addingName={addingName}
+              onAdd={addExerciseToToday}
             />
           );
         })}
@@ -274,7 +321,7 @@ function ExerciseFilterPicker({
         aria-label="Filter wählen"
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-2.5 text-left outline-none transition hover:bg-[var(--bg-soft)] focus:border-[var(--accent)]"
+        className="arc-tabbar-glass grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[1.75rem] px-4 py-2.5 text-left outline-none transition hover:bg-white/5"
       >
         <span className="truncate text-sm tracking-wide text-[var(--text)]">
           {focusLabel(focus)}
@@ -388,10 +435,14 @@ function ExerciseSection({
   title,
   items,
   showEquipment,
+  addingName,
+  onAdd,
 }: {
   title: string;
   items: CatalogExercise[];
   showEquipment?: boolean;
+  addingName: string | null;
+  onAdd: (name: string) => void;
 }) {
   return (
     <section className="space-y-3">
@@ -401,30 +452,46 @@ function ExerciseSection({
       >
         {title}
       </h2>
-      <ul className="divide-y divide-white/8 rounded-[1.75rem] bg-[var(--bg-elevated)]">
-        {items.map((ex) => (
-          <li key={ex.name} className="flex items-center justify-between gap-3 px-4 py-3.5">
-            <div className="min-w-0">
-              <p className="font-medium">{ex.name}</p>
-              <p className="text-xs tabular-nums text-[var(--muted)]">
-                {showEquipment && ex.equipment
-                  ? `${EQUIPMENT_LABELS[ex.equipment]} · `
-                  : null}
-                {ex.times > 0
-                  ? `${ex.times}× logged${ex.lastDate ? ` · last ${ex.lastDate}` : ""}`
-                  : "Not logged yet"}
-              </p>
-            </div>
-            {ex.lastWorkoutId ? (
-              <Link
-                href={`/workouts/${ex.lastWorkoutId}`}
-                className="shrink-0 text-xs text-[var(--muted)] hover:text-[var(--accent)]"
+      <ul className="space-y-2">
+        {items.map((ex) => {
+          const busy = addingName === ex.name;
+          return (
+            <li key={ex.name} className="flex items-stretch gap-2">
+              <div className="min-w-0 flex-1 rounded-[1.75rem] bg-[var(--bg-elevated)] px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium">{ex.name}</p>
+                    <p className="text-xs tabular-nums text-[var(--muted)]">
+                      {showEquipment && ex.equipment
+                        ? `${EQUIPMENT_LABELS[ex.equipment]} · `
+                        : null}
+                      {ex.times > 0
+                        ? `${ex.times}× logged${ex.lastDate ? ` · last ${ex.lastDate}` : ""}`
+                        : "Not logged yet"}
+                    </p>
+                  </div>
+                  {ex.lastWorkoutId ? (
+                    <Link
+                      href={`/workouts/${ex.lastWorkoutId}`}
+                      className="shrink-0 text-xs text-[var(--muted)] hover:text-[var(--accent)]"
+                    >
+                      Session →
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onAdd(ex.name)}
+                disabled={Boolean(addingName)}
+                aria-label={`${ex.name} hinzufügen`}
+                className="flex w-14 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-elevated)] text-2xl font-light text-[var(--accent)] transition hover:bg-[var(--bg-soft)] hover:text-white disabled:opacity-40"
               >
-                Session →
-              </Link>
-            ) : null}
-          </li>
-        ))}
+                {busy ? "…" : "+"}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

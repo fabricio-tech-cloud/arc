@@ -19,9 +19,28 @@ type Props = {
   focusIds?: string[];
 };
 
+async function ensureArcIntensityColors(mod: typeof import("body-muscles")) {
+  // White → lilac intensity spectrum (no yellow/orange/red)
+  const spectrum: Record<number, string> = {
+    0: "#6b7280",
+    1: "#f5f3ff",
+    2: "#e9e2ff",
+    3: "#d4c8fc",
+    4: "#c0abf5",
+    5: "#a78bfa",
+    6: "#9270ef",
+    7: "#7c5cbf",
+    8: "#6b47b0",
+    9: "#5a359a",
+    10: "#4c2a82",
+  };
+  Object.assign(mod.INTENSITY_COLORS, spectrum);
+}
+
 async function applyFocusZoom(host: HTMLElement, focusIds: string[], view: View) {
   if (!focusIds.length) return;
   const mod = await import("body-muscles");
+  await ensureArcIntensityColors(mod);
   const muscles = view === "BACK" ? mod.BACK_MUSCLES : mod.FRONT_MUSCLES;
   const nameById = new Map(muscles.map((m) => [m.id, m.name]));
   const focusNames = new Set(
@@ -111,6 +130,7 @@ export function BodyMap({
     (async () => {
       const mod = await import("body-muscles");
       if (cancelled || !hostRef.current) return;
+      await ensureArcIntensityColors(mod);
 
       const ViewSide = mod.ViewSide;
       chartRef.current = new mod.BodyChart(hostRef.current, {
@@ -155,7 +175,8 @@ export function BodyMap({
         selected: true,
       };
     }
-    import("body-muscles").then((mod) => {
+    import("body-muscles").then(async (mod) => {
+      await ensureArcIntensityColors(mod);
       chartRef.current?.update({
         view: view === "BACK" ? mod.ViewSide.BACK : mod.ViewSide.FRONT,
         bodyState: next,
