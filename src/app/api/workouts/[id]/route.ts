@@ -15,7 +15,13 @@ export async function GET(_request: Request, { params }: Params) {
       SELECT e.*,
         COALESCE(
           json_agg(
-            json_build_object('id', s.id, 'reps', s.reps, 'weight', s.weight, 'rir', s.rir)
+            json_build_object(
+              'id', s.id,
+              'reps', s.reps,
+              'weight', s.weight,
+              'rir', s.rir,
+              'done', coalesce(s.done, false)
+            )
             ORDER BY s.id
           ) FILTER (WHERE s.id IS NOT NULL),
           '[]'
@@ -64,6 +70,12 @@ export async function PATCH(request: Request, { params }: Params) {
       typeof body.completed === "boolean" ? body.completed : (existing.completed as boolean);
     const notes =
       body.notes !== undefined ? (body.notes as string | null) : (existing.notes as string | null);
+    const name =
+      body.name !== undefined
+        ? body.name === null || body.name === ""
+          ? null
+          : String(body.name).trim() || null
+        : (existing.name as string | null);
     const duration_minutes =
       body.duration_minutes !== undefined
         ? body.duration_minutes === null || body.duration_minutes === ""
@@ -80,6 +92,7 @@ export async function PATCH(request: Request, { params }: Params) {
       SET
         completed = ${completed},
         notes = ${notes},
+        name = ${name},
         duration_minutes = ${duration_minutes}
       WHERE id = ${id}
       RETURNING *

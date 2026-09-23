@@ -48,11 +48,13 @@ const links = [
 ];
 
 function sectionTitle(pathname: string) {
+  if (pathname.includes("/live")) return "Live";
   if (pathname.startsWith("/workouts/groups/")) {
     const slug = pathname.split("/")[3];
     const group = parseGroupParam(slug);
     if (group) return GROUP_LABELS[group];
   }
+  if (pathname.startsWith("/workouts/session")) return "Session";
   if (pathname.startsWith("/workouts")) return "Workouts";
   if (pathname.startsWith("/journal")) return "Journal";
   if (pathname.startsWith("/supplements")) return "Supplements";

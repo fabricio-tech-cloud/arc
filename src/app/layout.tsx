@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Syne } from "next/font/google";
 import { AppNav } from "@/components/AppNav";
+import { AppProviders } from "@/components/AppProviders";
 import "./globals.css";
 
 const syne = Syne({
@@ -25,8 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" className={`${syne.variable} ${manrope.variable}`}>
       <body>
         <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-24 pt-6 sm:px-6">
-          <AppNav />
-          <main className="mt-6">{children}</main>
+          <AppProviders>
+            <AppNav />
+            <main className="mt-6">{children}</main>
+          </AppProviders>
         </div>
       </body>
     </html>

@@ -7,26 +7,35 @@ import {
   resolveMuscleGroup,
   type MuscleGroupKey,
 } from "@/lib/muscles";
+import {
+  parsePlanExercises,
+  planMatchesDate,
+  type SessionPlanRow,
+  type WeekMode,
+} from "@/lib/session-schedule";
 import { findCatalogByName, todayIsoWeekday } from "@/lib/supplements";
 
 function daysAgoISO(n: number) {
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
+  d.setHours(12, 0, 0, 0);
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return toISODate(d);
 }
 
 function startOfWeekISO(d = new Date()) {
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(d);
-  monday.setHours(0, 0, 0, 0);
+  monday.setHours(12, 0, 0, 0);
   monday.setDate(d.getDate() + diff);
   return monday;
 }
 
 function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function weekdayLabel(dateStr: string) {
@@ -73,7 +82,7 @@ export async function GET() {
   try {
     const db = sql();
     const sinceHeat = daysAgoISO(400);
-    const since7 = daysAgoISO(7);
+    const since7 = daysAgoISO(6); // heute + 6 Tage zurück = 7 Tage
     const weekStart = startOfWeekISO();
     const weekStartISO = toISODate(weekStart);
     const todayISO = toISODate(new Date());
@@ -113,12 +122,31 @@ export async function GET() {
       ORDER BY w.date
     `;
 
+    const calendarExerciseRows = await db`
+      SELECT w.date::text AS date, e.name, e.muscle_group
+      FROM workouts w
+      JOIN exercises e ON e.workout_id = w.id
+      WHERE w.date >= ${sinceHeat}
+      ORDER BY w.date ASC, e.id ASC
+    `;
+
+    // Volumen aus abgeschlossenen Sessions der letzten 7 Tage (reps×kg; Fail = 1×kg)
     const [volume] = await db`
-      SELECT coalesce(sum(coalesce(s.reps, 0) * coalesce(s.weight, 0)), 0)::float AS total
+      SELECT coalesce(
+        sum(
+          CASE
+            WHEN coalesce(s.weight, 0) <= 0 THEN 0
+            WHEN s.rir = 0 AND s.reps IS NULL THEN s.weight
+            ELSE coalesce(s.reps, 0) * s.weight
+          END
+        ),
+        0
+      )::float AS total
       FROM sets s
       JOIN exercises e ON e.id = s.exercise_id
       JOIN workouts w ON w.id = e.workout_id
-      WHERE w.date >= ${since7}
+      WHERE w.completed = true
+        AND w.date >= ${since7}
     `;
 
     const [latestJournal] = await db`
@@ -133,6 +161,8 @@ export async function GET() {
         w.id,
         w.date::text AS date,
         w.notes,
+        w.name,
+        w.completed,
         coalesce(
           array_agg(DISTINCT e.muscle_group) FILTER (WHERE e.muscle_group IS NOT NULL),
           '{}'
@@ -140,8 +170,32 @@ export async function GET() {
       FROM workouts w
       LEFT JOIN exercises e ON e.workout_id = w.id
       WHERE w.date >= ${weekStartISO}
-      GROUP BY w.id, w.date, w.notes
+      GROUP BY w.id, w.date, w.notes, w.name, w.completed
       ORDER BY w.date ASC, w.id ASC
+    `;
+
+    const [activeRow] = await db`
+      SELECT
+        w.id,
+        w.date::text AS date,
+        w.name,
+        w.notes,
+        w.completed,
+        (SELECT count(*)::int FROM exercises e WHERE e.workout_id = w.id) AS exercise_count,
+        (
+          SELECT count(*)::int FROM sets s
+          JOIN exercises e ON e.id = s.exercise_id
+          WHERE e.workout_id = w.id AND coalesce(s.done, false) = true
+        ) AS done_sets,
+        (
+          SELECT count(*)::int FROM sets s
+          JOIN exercises e ON e.id = s.exercise_id
+          WHERE e.workout_id = w.id
+        ) AS total_sets
+      FROM workouts w
+      WHERE w.completed = false
+      ORDER BY w.date DESC, w.id DESC
+      LIMIT 1
     `;
 
     const historyRows = await db`
@@ -170,6 +224,25 @@ export async function GET() {
       ORDER BY time_of_day ASC, name ASC
     `;
 
+    let planRows: Record<string, unknown>[] = [];
+    try {
+      planRows = (await db`
+        SELECT
+          id,
+          name,
+          notes,
+          days,
+          week_mode,
+          interval_weeks,
+          anchor_date::text AS anchor_date,
+          exercises
+        FROM session_plans
+        ORDER BY created_at ASC
+      `) as Record<string, unknown>[];
+    } catch {
+      planRows = [];
+    }
+
     const loggedTodayRows = await db`
       SELECT id, name, dose, time, notes
       FROM supplements
@@ -182,23 +255,88 @@ export async function GET() {
       heatMap[row.date as string] = Number(row.count);
     }
 
-    const byDate = new Map<string, { id: string; abbr: string[]; title: string }>();
+    const sessionPlans: SessionPlanRow[] = planRows.map((row) => ({
+      id: String(row.id),
+      name: (row.name as string | null) ?? null,
+      notes: (row.notes as string | null) ?? null,
+      days: (row.days as number[]) ?? [],
+      week_mode: (row.week_mode as WeekMode) ?? "every",
+      interval_weeks: row.interval_weeks == null ? null : Number(row.interval_weeks),
+      anchor_date: String(row.anchor_date).slice(0, 10),
+      exercises: parsePlanExercises(row.exercises),
+    }));
+
+    const calendarDays: Record<
+      string,
+      { logged: string[]; planned: string[]; labels: string[] }
+    > = {};
+
+    function ensureDay(date: string) {
+      if (!calendarDays[date]) {
+        calendarDays[date] = { logged: [], planned: [], labels: [] };
+      }
+      return calendarDays[date];
+    }
+
+    for (const row of calendarExerciseRows) {
+      const date = String(row.date).slice(0, 10);
+      const name = String(row.name || "").trim();
+      if (!name) continue;
+      const day = ensureDay(date);
+      if (!day.logged.includes(name)) day.logged.push(name);
+    }
+
+    const planHorizonEnd = new Date();
+    planHorizonEnd.setHours(12, 0, 0, 0);
+    planHorizonEnd.setMonth(planHorizonEnd.getMonth() + 4);
+    const planCursor = new Date(weekStart);
+    planCursor.setHours(12, 0, 0, 0);
+    planCursor.setDate(planCursor.getDate() - 14);
+    while (planCursor <= planHorizonEnd) {
+      const date = toISODate(planCursor);
+      for (const plan of sessionPlans) {
+        if (!planMatchesDate(plan, date)) continue;
+        const day = ensureDay(date);
+        for (const ex of plan.exercises) {
+          const name = ex.name.trim();
+          if (!name) continue;
+          if (!day.planned.includes(name) && !day.logged.includes(name)) {
+            day.planned.push(name);
+          }
+        }
+      }
+      planCursor.setDate(planCursor.getDate() + 1);
+    }
+
+    for (const day of Object.values(calendarDays)) {
+      day.labels = [...day.logged, ...day.planned].slice(0, 4);
+    }
+
+    const byDate = new Map<
+      string,
+      { id: string; abbr: string[]; title: string; completed: boolean }
+    >();
     for (const row of weekRows) {
       const date = row.date as string;
       const groups = (row.muscle_groups as (string | null)[]) ?? [];
       const abbr = groupsToAbbr(groups);
+      const title =
+        (row.name as string | null)?.trim() ||
+        formatSplit(groups, row.notes as string | null);
       const prev = byDate.get(date);
       if (!prev) {
         byDate.set(date, {
           id: row.id as string,
           abbr,
-          title: formatSplit(groups, row.notes as string | null),
+          title,
+          completed: Boolean(row.completed),
         });
       } else {
         byDate.set(date, {
           id: prev.id,
           abbr: [...new Set([...prev.abbr, ...abbr])],
           title: prev.title,
+          completed: prev.completed && Boolean(row.completed),
         });
       }
     }
@@ -223,20 +361,43 @@ export async function GET() {
       const date = toISODate(d);
       const entry = byDate.get(date);
       const isToday = date === todayISO;
+      const duePlans = sessionPlans.filter((p) => planMatchesDate(p, date));
+      const planGroups = [
+        ...new Set(
+          duePlans.flatMap((p) =>
+            p.exercises
+              .map((ex) => resolveMuscleGroup(ex.muscle_group))
+              .filter((g): g is MuscleGroupKey => !!g),
+          ),
+        ),
+      ];
+      const planAbbr = planGroups.map((g) => GROUP_ABBR[g]);
+      const planTitle =
+        duePlans.map((p) => p.name?.trim()).filter(Boolean).join(" · ") ||
+        (planGroups.length ? planGroups.map((g) => GROUP_LABELS[g]).join(" + ") : null);
+
       const abbr =
         entry?.abbr?.length
           ? entry.abbr
-          : isToday && inferredToday.length
-            ? inferredToday
-            : [];
+          : planAbbr.length
+            ? planAbbr
+            : isToday && inferredToday.length
+              ? inferredToday
+              : [];
+
+      const fromSchedule = !entry?.abbr?.length && planAbbr.length > 0;
+      const fromInfer = !entry?.abbr?.length && !fromSchedule && isToday && inferredToday.length > 0;
+
       return {
         label,
         date,
         isToday,
         abbr,
-        planned: !entry?.abbr?.length && isToday && inferredToday.length > 0,
+        planned: fromSchedule || fromInfer,
+        scheduled: fromSchedule,
         workoutId: entry?.id ?? null,
-        title: entry?.title ?? null,
+        planId: duePlans[0]?.id ?? null,
+        title: entry?.title ?? planTitle,
       };
     });
 
@@ -291,6 +452,23 @@ export async function GET() {
       notes: (row.notes as string | null) ?? null,
     }));
 
+    const todayDuePlans = sessionPlans.filter((p) => planMatchesDate(p, todayISO));
+    const todayPlanSource = todayDuePlans[0] ?? null;
+
+    const activeSession = activeRow
+      ? {
+          id: String(activeRow.id),
+          date: String(activeRow.date).slice(0, 10),
+          name: (activeRow.name as string | null) ?? null,
+          title:
+            (activeRow.name as string | null)?.trim() ||
+            "Aktive Session",
+          exerciseCount: Number(activeRow.exercise_count) || 0,
+          doneSets: Number(activeRow.done_sets) || 0,
+          totalSets: Number(activeRow.total_sets) || 0,
+        }
+      : null;
+
     const todayPlan = {
       date: todayISO,
       workout: today
@@ -303,17 +481,27 @@ export async function GET() {
             abbr: today.abbr,
             planned: !!today.planned,
             workoutId: today.workoutId,
-            status: today.workoutId
-              ? ("logged" as const)
-              : today.abbr.length
-                ? ("planned" as const)
-                : ("rest" as const),
+            planId: today.planId ?? todayPlanSource?.id ?? null,
+            status: activeSession
+              ? ("active" as const)
+              : today.workoutId && byDate.get(todayISO)?.completed
+                ? ("logged" as const)
+                : today.workoutId
+                  ? ("active" as const)
+                  : today.abbr.length
+                    ? ("planned" as const)
+                    : ("rest" as const),
             groups: muscleGroups.map((g) => ({
               key: g,
               label: GROUP_LABELS[g],
               abbr: GROUP_ABBR[g],
             })),
             suggestedExercises,
+            planExercises: (todayPlanSource?.exercises ?? []).map((ex) => ({
+              name: ex.name,
+              muscle_group: ex.muscle_group,
+              sets: ex.sets,
+            })),
           }
         : null,
       supplementsDue,
@@ -333,11 +521,13 @@ export async function GET() {
       stats,
       recent,
       heatMap,
+      calendarDays,
       volume7d: Math.round(Number(volume?.total) || 0),
       latestJournal: latestJournal ?? null,
       thisWeek,
       today,
       todayPlan,
+      activeSession,
       weekStart: weekStartISO,
     });
   } catch (error) {

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { BodyMap } from "@/components/BodyMap";
+import { useSessionCart } from "@/components/SessionCart";
 import { SwipeBack } from "@/components/SwipeBack";
 import {
   EQUIPMENT_LABELS,
@@ -53,12 +53,11 @@ function equipmentLabel(opt: EquipmentOption) {
 }
 
 export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGroupKey }) {
-  const router = useRouter();
+  const cart = useSessionCart();
   const [data, setData] = useState<GroupPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [focusFilter, setFocusFilter] = useState<FocusOption>("all");
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentOption>("all");
-  const [addingName, setAddingName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,47 +131,13 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
     return map;
   }, [filtered]);
 
-  async function addExerciseToToday(name: string) {
-    if (addingName) return;
-    setAddingName(name);
-    setError(null);
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const listRes = await fetch(`/api/workouts?date=${encodeURIComponent(today)}`);
-      const listJson = await listRes.json();
-      if (!listRes.ok) throw new Error(listJson.error || "Failed");
+  const selectedNames = useMemo(
+    () => new Set(cart.items.map((i) => i.name)),
+    [cart.items],
+  );
 
-      let workoutId: string | null =
-        Array.isArray(listJson) && listJson[0] ? String(listJson[0].id) : null;
-
-      if (!workoutId) {
-        const createRes = await fetch("/api/workouts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: today }),
-        });
-        const createJson = await createRes.json();
-        if (!createRes.ok) throw new Error(createJson.error || "Failed");
-        workoutId = String(createJson.id);
-      }
-
-      const addRes = await fetch("/api/exercises", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workout_id: workoutId,
-          name,
-          muscle_group: groupKey,
-        }),
-      });
-      const addJson = await addRes.json();
-      if (!addRes.ok) throw new Error(addJson.error || "Failed");
-
-      router.push(`/workouts/${workoutId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
-      setAddingName(null);
-    }
+  function toggleExercise(name: string) {
+    cart.toggle({ name, muscleGroup: groupKey });
   }
 
   return (
@@ -200,6 +165,7 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
               {data
                 ? `${filtered.length} ${filtered.length === 1 ? "Übung" : "Übungen"}`
                 : "Loading…"}
+              {cart.count > 0 ? ` · ${cart.count} in Session` : null}
             </p>
           </div>
         </div>
@@ -247,14 +213,20 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
               title={REGION_LABELS[region]}
               items={items}
               showEquipment={hasEquipment}
-              addingName={addingName}
-              onAdd={addExerciseToToday}
+              selectedNames={selectedNames}
+              onToggle={toggleExercise}
             />
           );
         })}
 
       {hasRegions && byRegion.Other.length > 0 && (
-        <ExerciseSection title="Weitere" items={byRegion.Other} showEquipment={hasEquipment} addingName={addingName} onAdd={addExerciseToToday} />
+        <ExerciseSection
+          title="Weitere"
+          items={byRegion.Other}
+          showEquipment={hasEquipment}
+          selectedNames={selectedNames}
+          onToggle={toggleExercise}
+        />
       )}
 
       {!hasRegions &&
@@ -267,8 +239,8 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
               title={FOCUS_LABELS[focus]}
               items={items}
               showEquipment={hasEquipment}
-              addingName={addingName}
-              onAdd={addExerciseToToday}
+              selectedNames={selectedNames}
+              onToggle={toggleExercise}
             />
           );
         })}
@@ -328,9 +300,7 @@ function ExerciseFilterPicker({
         </span>
         <span
           className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-            filterActive
-              ? "text-white"
-              : "text-white/45"
+            filterActive ? "text-white" : "text-white/45"
           }`}
           aria-hidden
         >
@@ -435,14 +405,14 @@ function ExerciseSection({
   title,
   items,
   showEquipment,
-  addingName,
-  onAdd,
+  selectedNames,
+  onToggle,
 }: {
   title: string;
   items: CatalogExercise[];
   showEquipment?: boolean;
-  addingName: string | null;
-  onAdd: (name: string) => void;
+  selectedNames: Set<string>;
+  onToggle: (name: string) => void;
 }) {
   return (
     <section className="space-y-3">
@@ -454,7 +424,7 @@ function ExerciseSection({
       </h2>
       <ul className="space-y-2">
         {items.map((ex) => {
-          const busy = addingName === ex.name;
+          const selected = selectedNames.has(ex.name);
           return (
             <li key={ex.name} className="flex items-stretch gap-2">
               <div className="min-w-0 flex-1 rounded-[1.75rem] bg-[var(--bg-elevated)] px-4 py-3.5">
@@ -482,12 +452,20 @@ function ExerciseSection({
               </div>
               <button
                 type="button"
-                onClick={() => onAdd(ex.name)}
-                disabled={Boolean(addingName)}
-                aria-label={`${ex.name} hinzufügen`}
-                className="flex w-14 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-elevated)] text-2xl font-light text-[var(--accent)] transition hover:bg-[var(--bg-soft)] hover:text-white disabled:opacity-40"
+                onClick={() => onToggle(ex.name)}
+                aria-label={
+                  selected
+                    ? `${ex.name} aus Session entfernen`
+                    : `${ex.name} zur Session hinzufügen`
+                }
+                aria-pressed={selected}
+                className={`flex w-14 shrink-0 items-center justify-center rounded-[1.75rem] text-2xl font-light transition ${
+                  selected
+                    ? "arc-chrome"
+                    : "bg-[var(--bg-elevated)] text-[var(--accent)] hover:bg-[var(--bg-soft)] hover:text-white"
+                }`}
               >
-                {busy ? "…" : "+"}
+                {selected ? "✓" : "+"}
               </button>
             </li>
           );

@@ -15,9 +15,14 @@ type Exercise = {
 type WorkoutDetail = {
   id: string;
   date: string;
+  name: string | null;
   notes: string | null;
   exercises: Exercise[];
 };
+
+function formatWorkoutDate(raw: string) {
+  return raw.slice(0, 10);
+}
 
 export default function WorkoutDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +32,8 @@ export default function WorkoutDetailPage() {
   const [exName, setExName] = useState("");
   const [muscle, setMuscle] = useState<string>("Chest");
   const [setDraft, setSetDraft] = useState<Record<string, { reps: string; weight: string; rir: string }>>({});
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
 
   const load = useCallback(() => {
     fetch(`/api/workouts/${id}`)
@@ -34,6 +41,7 @@ export default function WorkoutDetailPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Failed");
         setWorkout(json);
+        setTitleDraft(json.name ?? "");
       })
       .catch((err) => setError(err.message));
   }, [id]);
@@ -41,6 +49,31 @@ export default function WorkoutDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function saveTitle() {
+    if (!workout || savingTitle) return;
+    const next = titleDraft.trim();
+    const current = (workout.name ?? "").trim();
+    if (next === current) return;
+    setSavingTitle(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workouts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: next || null }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed");
+      setWorkout((prev) => (prev ? { ...prev, name: json.name ?? null } : prev));
+      setTitleDraft(json.name ?? "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+      setTitleDraft(workout.name ?? "");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
 
   async function addExercise(e: FormEvent) {
     e.preventDefault();
@@ -80,6 +113,17 @@ export default function WorkoutDetailPage() {
     load();
   }
 
+  async function removeSet(setId: string) {
+    setError(null);
+    const res = await fetch(`/api/sets/${setId}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(json.error || "Failed");
+      return;
+    }
+    load();
+  }
+
   async function removeWorkout() {
     if (!confirm("Workout löschen?")) return;
     await fetch(`/api/workouts/${id}`, { method: "DELETE" });
@@ -101,10 +145,24 @@ export default function WorkoutDetailPage() {
           <Link href="/workouts" className="text-sm text-[var(--muted)] hover:text-[var(--accent)]">
             ← Workouts
           </Link>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums">
-            {workout.date}
-          </h1>
-          <p className="mt-1 text-[var(--muted)]">{workout.notes || "Keine Notiz"}</p>
+          <input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={() => void saveTitle()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              }
+            }}
+            placeholder="Workout-Name"
+            aria-label="Workout-Name"
+            disabled={savingTitle}
+            className="mt-2 block w-full border-0 bg-transparent p-0 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:ring-0"
+          />
+          <p className="mt-1 text-sm tabular-nums text-[var(--muted)]">
+            {formatWorkoutDate(workout.date)}
+            {workout.notes ? ` · ${workout.notes}` : ""}
+          </p>
         </div>
         <button
           type="button"
@@ -165,11 +223,28 @@ export default function WorkoutDetailPage() {
               </div>
               <ul className="mb-3 space-y-1 text-sm">
                 {ex.sets.map((s, i) => (
-                  <li key={s.id} className="flex gap-4 tabular-nums text-[var(--muted)]">
+                  <li
+                    key={s.id}
+                    className="flex items-center gap-4 tabular-nums text-[var(--muted)]"
+                  >
                     <span className="w-8 text-[var(--text)]">#{i + 1}</span>
-                    <span>{s.reps ?? "—"} reps</span>
+                    <span>
+                      {s.rir === 0
+                        ? s.reps != null
+                          ? `${s.reps} → Fail`
+                          : "Fail"
+                        : `${s.reps ?? "—"} reps`}
+                    </span>
                     <span>{s.weight ?? "—"} kg</span>
-                    <span>RIR {s.rir ?? "—"}</span>
+                    <span>{s.rir === 0 ? "RIR 0" : `RIR ${s.rir ?? "—"}`}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSet(s.id)}
+                      aria-label={`Set ${i + 1} entfernen`}
+                      className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[var(--muted)] transition hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                    >
+                      ×
+                    </button>
                   </li>
                 ))}
               </ul>

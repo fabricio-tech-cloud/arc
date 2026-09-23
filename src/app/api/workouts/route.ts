@@ -43,13 +43,53 @@ export async function POST(request: Request) {
     const body = await request.json();
     const date = body.date ?? new Date().toISOString().slice(0, 10);
     const notes = body.notes ?? null;
+    const name =
+      body.name == null || body.name === "" ? null : String(body.name).trim() || null;
+    const exercises = Array.isArray(body.exercises) ? body.exercises : [];
     const db = sql();
-    const [row] = await db`
-      INSERT INTO workouts (date, notes)
-      VALUES (${date}, ${notes})
+
+    const [workout] = await db`
+      INSERT INTO workouts (date, notes, name)
+      VALUES (${date}, ${notes}, ${name})
       RETURNING *
     `;
-    return NextResponse.json(row, { status: 201 });
+
+    const createdExercises = [];
+    for (const ex of exercises) {
+      if (!ex?.name) continue;
+      const [exercise] = await db`
+        INSERT INTO exercises (workout_id, name, muscle_group)
+        VALUES (${workout.id}, ${String(ex.name)}, ${ex.muscle_group ?? null})
+        RETURNING *
+      `;
+      const sets = Array.isArray(ex.sets) ? ex.sets : [];
+      const createdSets = [];
+      for (const s of sets) {
+        const failure = Boolean(s.failure);
+        const reps = s.reps === "" || s.reps == null ? null : Number(s.reps);
+        const weight = s.weight === "" || s.weight == null ? null : Number(s.weight);
+        const rir = failure
+          ? 0
+          : s.rir === "" || s.rir == null
+            ? null
+            : Number(s.rir);
+        if (!failure && reps == null && weight == null && rir == null) continue;
+        const [setRow] = await db`
+          INSERT INTO sets (exercise_id, reps, weight, rir)
+          VALUES (
+            ${exercise.id},
+            ${Number.isFinite(reps as number) ? reps : null},
+            ${Number.isFinite(weight as number) ? weight : null},
+            ${rir == null || !Number.isFinite(rir) ? null : rir}
+          )
+          RETURNING *
+        `;
+        createdSets.push(setRow);
+      }
+      createdExercises.push({ ...exercise, sets: createdSets });
+    }
+
+    return NextResponse.json({ ...workout, exercises: createdExercises }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create workout" },

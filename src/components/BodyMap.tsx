@@ -243,7 +243,7 @@ export function BodyMap({
               <span className="font-mono text-xs">{active.id}</span>
             </>
           ) : (
-            "Muskel antippen → Gruppe öffnen"
+            "Muskel antippen → Training dieser Woche"
           )}
         </p>
       )}

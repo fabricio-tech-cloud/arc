@@ -8,6 +8,7 @@ import {
   ProgressRing,
   ThisWeekStrip,
   TodayCard,
+  type CalendarDayInfo,
   type TodayPlan,
   type WeekDay,
 } from "@/components/OverviewWidgets";
@@ -23,6 +24,16 @@ type RecentWorkout = {
   index: number;
 };
 
+type ActiveSession = {
+  id: string;
+  date: string;
+  name: string | null;
+  title: string;
+  exerciseCount: number;
+  doneSets: number;
+  totalSets: number;
+};
+
 type Overview = {
   stats: {
     workouts: number;
@@ -33,6 +44,7 @@ type Overview = {
   };
   recent: RecentWorkout[];
   heatMap: Record<string, number>;
+  calendarDays?: Record<string, CalendarDayInfo>;
   volume7d: number;
   latestJournal: {
     date: string;
@@ -43,6 +55,7 @@ type Overview = {
   thisWeek: WeekDay[];
   today: WeekDay | null;
   todayPlan: TodayPlan | null;
+  activeSession?: ActiveSession | null;
 };
 
 function formatVolume(n: number) {
@@ -93,6 +106,8 @@ export default function OverviewPage() {
 
   const primary = data?.recent[0] ?? null;
   const secondary = data?.recent[1] ?? null;
+  const active = data?.activeSession ?? null;
+  const todayWorkout = data?.todayPlan?.workout ?? null;
   const weekSessions = Object.entries(data?.heatMap ?? {}).filter(([date]) => {
     const d = new Date(date + "T12:00:00");
     const now = new Date();
@@ -101,6 +116,27 @@ export default function OverviewPage() {
     start.setHours(0, 0, 0, 0);
     return d >= start;
   }).length;
+
+  const activePct =
+    active && active.totalSets > 0
+      ? Math.round((active.doneSets / active.totalSets) * 100)
+      : 0;
+
+  /** Day progress: one entered session done → full ring (not 1/4 of a weekly default). */
+  const dayRing =
+    todayWorkout && todayWorkout.status !== "rest"
+      ? {
+          value: todayWorkout.status === "logged" ? 1 : 0,
+          max: 1,
+        }
+      : {
+          value: primary?.index ?? (weekSessions || 0),
+          max: Math.max(1, weekSessions || primary?.index || 1),
+        };
+
+  const workoutRing = active
+    ? { value: active.doneSets, max: Math.max(1, active.totalSets) }
+    : dayRing;
 
   return (
     <div className="animate-rise mx-auto max-w-lg space-y-3">
@@ -114,33 +150,56 @@ export default function OverviewPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <Link
-          href={primary ? `/workouts/${primary.id}` : "/workouts"}
-          className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
+          href={active ? `/workouts/${active.id}/live` : primary ? `/workouts/${primary.id}` : "/workouts"}
+          className="relative flex min-h-[11.5rem] flex-col justify-between overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
         >
-          <div className="flex items-start justify-between">
-            <ProgressRing value={primary?.index ?? (weekSessions || 0)} max={Math.max(4, data?.stats.workouts || 4)} />
+          {active ? (
+            <span
+              className="pointer-events-none absolute right-1 top-1/2 z-0 -translate-y-1/2 select-none text-[1.65rem] font-normal leading-none tracking-wide text-white/[0.08]"
+              style={{ fontFamily: '"Times New Roman", Times, serif' }}
+              aria-hidden
+            >
+              Active
+            </span>
+          ) : null}
+          <div className="relative z-10 flex items-start justify-between">
+            <ProgressRing value={workoutRing.value} max={workoutRing.max} />
             <OverviewCardMenu />
           </div>
-          <div>
+          <div className="relative z-10 pr-2">
             <p className="text-[15px] font-medium leading-snug text-white">
-              {primary?.title ?? "Noch kein Workout"}
+              {active
+                ? active.title
+                : primary?.title ?? "Noch kein Workout"}
             </p>
             <p className="mt-1 text-[13px] text-white/40">
-              {primary?.weekday ?? "Tippe zum Starten"}
+              {active
+                ? `${active.doneSets}/${active.totalSets} Sets · ${activePct}%`
+                : primary?.weekday ?? "Tippe zum Starten"}
             </p>
           </div>
         </Link>
 
         <Link
           href="/journal"
-          className="flex min-h-[11.5rem] flex-col justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
+          className="relative flex min-h-[11.5rem] flex-col overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
         >
-          <div className="flex items-start justify-between">
-            <p className="text-[1.75rem] font-semibold leading-none tracking-tight text-white">
+          <span
+            className="pointer-events-none absolute bottom-3 right-2 z-0 select-none text-[2.4rem] font-normal leading-none tracking-wide text-white/[0.08]"
+            style={{ fontFamily: '"Times New Roman", Times, serif' }}
+            aria-hidden
+          >
+            Sleep
+          </span>
+          <div className="relative z-10 flex items-start justify-between">
+            <p
+              className="text-[2rem] font-normal leading-none tracking-tight text-white"
+              style={{ fontFamily: '"Times New Roman", Times, serif' }}
+            >
               {data?.latestJournal?.sleep_hours != null ? (
                 <>
                   {data.latestJournal.sleep_hours}
-                  <span className="ml-1 text-base font-normal text-white/50">h</span>
+                  <span className="ml-1 text-base font-normal text-white/45">h</span>
                 </>
               ) : (
                 <span className="text-white/35">—</span>
@@ -148,17 +207,17 @@ export default function OverviewPage() {
             </p>
             <OverviewCardMenu />
           </div>
-          <div>
-            <p className="text-[15px] font-medium text-white">Schlaf</p>
-            <p className="mt-1 text-[13px] text-white/40">
-              {relativeJournal(data?.latestJournal?.date)}
-            </p>
-          </div>
+          <p className="relative z-10 mt-2 pr-10 text-[13px] text-white/40">
+            {relativeJournal(data?.latestJournal?.date)}
+          </p>
         </Link>
       </div>
 
       <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
-        <OverviewHeatmap heatMap={data?.heatMap ?? {}} />
+        <OverviewHeatmap
+          heatMap={data?.heatMap ?? {}}
+          calendarDays={data?.calendarDays ?? {}}
+        />
         <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-4">
           <ProgressRing
             value={secondary?.index ?? (primary ? 2 : 0)}
@@ -178,8 +237,8 @@ export default function OverviewPage() {
 
       <div className="flex items-center justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] px-5 py-5">
         <div>
-          <p className="text-[15px] font-medium text-white">Volume lifted</p>
-          <p className="mt-0.5 text-[13px] text-white/40">Last 7 days</p>
+          <p className="text-[15px] font-medium text-white">Volumen</p>
+          <p className="mt-0.5 text-[13px] text-white/40">Letzte 7 Tage</p>
         </div>
         <div className="flex items-center gap-2">
           <p className="text-[1.65rem] font-semibold tabular-nums tracking-tight text-white">

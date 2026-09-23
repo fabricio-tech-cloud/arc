@@ -108,8 +108,79 @@ textarea {
   }
 }
 
-.swipe-back-hint {
-  animation: swipe-back-hint 1.1s ease-in-out both;
+@keyframes cal-enter-left {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cal-enter-right {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cal-enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cal-enter-down {
+  from {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cal-title-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cal-slide-left {
+  animation: cal-enter-left 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cal-slide-right {
+  animation: cal-enter-right 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cal-slide-up {
+  animation: cal-enter-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cal-slide-down {
+  animation: cal-enter-down 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cal-title-anim {
+  animation: cal-title-in 0.32s ease-out both;
 }
 
 .live-dot {

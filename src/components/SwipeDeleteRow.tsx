@@ -3,17 +3,21 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const DELETE_W = 76;
+const AXIS_THRESHOLD = 6;
 
 export function SwipeDeleteRow({
   open,
   onOpenChange,
   onDelete,
+  onTap,
   actionLabel = "Löschen",
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete: () => void;
+  /** Fired on a real tap (not a swipe). Prefer this over nested Links. */
+  onTap?: () => void;
   actionLabel?: string;
   children: ReactNode;
 }) {
@@ -24,6 +28,7 @@ export function SwipeDeleteRow({
   const pointerId = useRef<number | null>(null);
   const offsetRef = useRef(0);
   const draggingRef = useRef(false);
+  const swipedRef = useRef(false);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
 
@@ -37,14 +42,18 @@ export function SwipeDeleteRow({
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    // Don't start a swipe from form controls / nested buttons / links
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, button, a, label")) return;
     pointerId.current = e.pointerId;
     startX.current = e.clientX;
     startY.current = e.clientY;
     startOffset.current = open ? -DELETE_W : 0;
     axis.current = null;
+    swipedRef.current = false;
     draggingRef.current = true;
     setDragging(true);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // Do not capture yet — capturing on down suppresses child/link clicks.
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -52,14 +61,9 @@ export function SwipeDeleteRow({
     const dx = e.clientX - startX.current;
     const dy = e.clientY - startY.current;
     if (!axis.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dx) < AXIS_THRESHOLD && Math.abs(dy) < AXIS_THRESHOLD) return;
       axis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
       if (axis.current === "v") {
-        try {
-          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-        } catch {
-          /* already released */
-        }
         pointerId.current = null;
         draggingRef.current = false;
         setDragging(false);
@@ -68,9 +72,16 @@ export function SwipeDeleteRow({
         setOffset(reset);
         return;
       }
+      // Horizontal swipe confirmed — now capture so we keep receiving moves.
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
     }
     if (axis.current !== "h") return;
     e.preventDefault();
+    swipedRef.current = true;
     const next = Math.min(0, Math.max(-DELETE_W, startOffset.current + dx));
     offsetRef.current = next;
     setOffset(next);
@@ -87,17 +98,40 @@ export function SwipeDeleteRow({
     } catch {
       /* already released */
     }
-    if (axis.current !== "h") {
-      const reset = open ? -DELETE_W : 0;
-      offsetRef.current = reset;
-      setOffset(reset);
+
+    if (axis.current === "h") {
+      const shouldOpen = offsetRef.current < -DELETE_W / 2;
+      onOpenChange(shouldOpen);
+      const next = shouldOpen ? -DELETE_W : 0;
+      offsetRef.current = next;
+      setOffset(next);
       return;
     }
-    const shouldOpen = offsetRef.current < -DELETE_W / 2;
-    onOpenChange(shouldOpen);
-    const next = shouldOpen ? -DELETE_W : 0;
-    offsetRef.current = next;
-    setOffset(next);
+
+    // Pure tap — close if open, otherwise let onClick handle navigation.
+    const reset = open ? -DELETE_W : 0;
+    offsetRef.current = reset;
+    setOffset(reset);
+  }
+
+  function onClick(e: React.MouseEvent) {
+    if (swipedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      swipedRef.current = false;
+      return;
+    }
+    if (open) {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenChange(false);
+      return;
+    }
+    if (onTap) {
+      e.preventDefault();
+      e.stopPropagation();
+      onTap();
+    }
   }
 
   return (
@@ -113,13 +147,14 @@ export function SwipeDeleteRow({
       </div>
       <div
         className={`relative bg-[var(--bg-elevated)] touch-pan-y select-none ${
-          dragging ? "cursor-grabbing" : "cursor-grab"
+          dragging ? "cursor-grabbing" : onTap ? "cursor-pointer" : "cursor-default"
         } ${dragging ? "" : "transition-transform duration-200 ease-out"}`}
         style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onClick={onClick}
       >
         <div
           className="min-w-0 py-3 pr-4"
