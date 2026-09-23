@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BorderBeam } from "border-beam";
+import { ThinkingOrb } from "thinking-orbs";
 import { GROUP_LABELS, parseGroupParam } from "@/lib/muscles";
 
 const links = [
@@ -69,16 +71,22 @@ export function AppNav() {
 
   return (
     <>
-      <header className="animate-rise flex flex-col items-center justify-center pb-2">
+      <header className="animate-rise relative flex flex-col items-center justify-center pb-2">
+        <span
+          className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-[58%] scale-x-[1.65] opacity-55"
+          aria-hidden
+        >
+          <ThinkingOrb state="composing" size={64} theme="dark" />
+        </span>
         <Link
           href="/"
-          className="text-2xl font-normal tracking-[0.08em] text-[var(--text)] uppercase"
+          className="relative z-10 text-2xl font-normal tracking-[0.08em] text-[var(--text)] uppercase"
           style={{ fontFamily: '"Times New Roman", Times, serif' }}
         >
           ARC
         </Link>
         <p
-          className="mt-0.5 text-xs font-normal tracking-wide text-[var(--muted)]"
+          className="relative z-10 mt-0.5 text-xs font-normal tracking-wide text-[var(--muted)]"
           style={{ fontFamily: '"Times New Roman", Times, serif' }}
         >
           {section}
@@ -89,29 +97,89 @@ export function AppNav() {
         className="arc-tabbar fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
         aria-label="Hauptnavigation"
       >
-        <div className="arc-tabbar-glass relative grid w-full max-w-[20rem] grid-cols-4 rounded-full p-1.5">
-          <span
+        <div className="relative w-full max-w-[20rem]">
+          <div className="arc-tabbar-glass relative grid w-full grid-cols-4 rounded-full p-1.5">
+            <span
+              aria-hidden
+              className="arc-tab-active pointer-events-none absolute inset-y-1.5 left-1.5 w-[calc((100%-0.75rem)/4)] rounded-full transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(${activeIndex * 100}%)` }}
+            />
+            {links.map((link, i) => {
+              const active = i === activeIndex;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-full px-1.5 py-1 text-[9px] font-medium tracking-wide transition-colors duration-300 ${
+                    active
+                      ? "text-white arc-tab-glow"
+                      : "text-[var(--muted)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  <span className={active ? "opacity-100" : "opacity-80"}>{link.icon}</span>
+                  <span className="truncate">{link.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+          {/* Overlay above glass. Default BorderBeam masks paint invisible here; use a
+              box-shadow + rotating conic border without mask-composite. */}
+          <BorderBeam
+            className="pointer-events-none"
+            style={{ position: "absolute", inset: 0, zIndex: 20 }}
+            size="md"
+            borderRadius={28}
+            colorVariant="ice"
+            theme="dark"
+            strength={1}
+            duration={2.8}
             aria-hidden
-            className="arc-tab-active pointer-events-none absolute inset-y-1.5 left-1.5 w-[calc((100%-0.75rem)/4)] rounded-full transition-transform duration-300 ease-out"
-            style={{ transform: `translateX(${activeIndex * 100}%)` }}
-          />
-          {links.map((link, i) => {
-            const active = i === activeIndex;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`relative z-10 flex min-w-0 flex-col items-center gap-0.5 rounded-full px-1.5 py-1 text-[9px] font-medium tracking-wide transition-colors duration-300 ${
-                  active
-                    ? "text-white arc-tab-glow"
-                    : "text-[var(--muted)] hover:text-[var(--text)]"
-                }`}
-              >
-                <span className={active ? "opacity-100" : "opacity-80"}>{link.icon}</span>
-                <span className="truncate">{link.label}</span>
-              </Link>
-            );
-          })}
+            css={`
+              [data-beam="{id}"] {
+                overflow: visible !important;
+              }
+              [data-beam="{id}"]::before,
+              [data-beam="{id}"] [data-beam-bloom] {
+                display: none !important;
+                content: none !important;
+              }
+              [data-beam="{id}"][data-active]::after,
+              [data-beam="{id}"][data-fading]::after {
+                content: "" !important;
+                position: absolute !important;
+                inset: 0 !important;
+                border-radius: 28px !important;
+                border: 2px solid transparent !important;
+                padding: 0 !important;
+                background: conic-gradient(
+                  from var(--beam-angle-{id}),
+                  transparent 0%,
+                  transparent 58%,
+                  rgba(186, 230, 253, 0.25) 68%,
+                  rgba(224, 242, 254, 0.9) 80%,
+                  #fff 88%,
+                  rgba(224, 242, 254, 0.9) 93%,
+                  rgba(186, 230, 253, 0.25) 97%,
+                  transparent 100%
+                ) border-box !important;
+                -webkit-mask:
+                  linear-gradient(#fff 0 0) padding-box,
+                  linear-gradient(#fff 0 0) !important;
+                -webkit-mask-composite: xor !important;
+                mask:
+                  linear-gradient(#fff 0 0) padding-box,
+                  linear-gradient(#fff 0 0) !important;
+                mask-composite: exclude !important;
+                opacity: 1 !important;
+                filter: drop-shadow(0 0 5px rgba(186, 230, 253, 0.45)) !important;
+                z-index: 5 !important;
+                pointer-events: none !important;
+                clip-path: none !important;
+              }
+            `}
+          >
+            <div className="h-full w-full rounded-full" />
+          </BorderBeam>
         </div>
       </nav>
     </>

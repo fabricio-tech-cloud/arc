@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BodyState, MuscleId } from "body-muscles";
 import { BodyMap } from "@/components/BodyMap";
+import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
 import {
   GROUP_LABELS,
   GROUP_VIEW,
@@ -55,6 +56,9 @@ export default function WorkoutsPage() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     Promise.all([
@@ -118,6 +122,23 @@ export default function WorkoutsPage() {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function removeWorkout(id: string) {
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/workouts/${id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed");
+      setConfirmId(null);
+      setSwipeOpenId(null);
+      setWorkouts((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -214,26 +235,54 @@ export default function WorkoutsPage() {
 
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
-        <ul className="divide-y divide-white/8 rounded-[1.75rem] bg-[var(--bg-elevated)]">
+        <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
           {workouts.length === 0 && (
             <li className="px-4 py-6 text-[var(--muted)]">Noch leer — erstes Workout oben anlegen.</li>
           )}
-          {workouts.map((w) => (
-            <li key={w.id}>
-              <Link
-                href={`/workouts/${w.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-3.5 transition hover:bg-[var(--bg-soft)]"
-              >
-                <div>
-                  <p className="font-semibold tabular-nums">{w.date}</p>
-                  <p className="text-sm text-[var(--muted)]">{w.notes || "—"}</p>
-                </div>
-                <span className="rounded-full bg-[var(--bg-soft)] px-2.5 py-1 text-xs text-[var(--accent)]">
-                  {w.exercise_count} Übungen
-                </span>
-              </Link>
-            </li>
-          ))}
+          {workouts.map((w) => {
+            const confirming = confirmId === w.id;
+            return (
+              <li key={w.id} className="border-b border-white/8 last:border-b-0">
+                <SwipeDeleteRow
+                  open={swipeOpenId === w.id || confirming}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setSwipeOpenId(null);
+                      setConfirmId(null);
+                      return;
+                    }
+                    setSwipeOpenId(w.id);
+                  }}
+                  actionLabel={confirming ? (deleting ? "…" : "Entfernen") : "Löschen"}
+                  onDelete={() => {
+                    if (confirming) {
+                      if (!deleting) removeWorkout(w.id);
+                      return;
+                    }
+                    setConfirmId(w.id);
+                    setSwipeOpenId(w.id);
+                  }}
+                >
+                  {confirming ? (
+                    <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
+                  ) : (
+                    <Link
+                      href={`/workouts/${w.id}`}
+                      className="flex items-center justify-between gap-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold tabular-nums">{w.date}</p>
+                        <p className="truncate text-sm text-[var(--muted)]">{w.notes || "—"}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-[var(--bg-soft)] px-2.5 py-1 text-xs text-[var(--accent)]">
+                        {w.exercise_count} Übungen
+                      </span>
+                    </Link>
+                  )}
+                </SwipeDeleteRow>
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>

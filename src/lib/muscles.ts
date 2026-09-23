@@ -260,128 +260,235 @@ export const TRAINING_FOCUSES: TrainingFocus[] = [
   "Explosiveness",
 ];
 
+export type Equipment =
+  | "Barbell"
+  | "Dumbbell"
+  | "Machine"
+  | "Cable"
+  | "Bodyweight"
+  | "Other";
+
+export const EQUIPMENT_TYPES: Equipment[] = [
+  "Barbell",
+  "Dumbbell",
+  "Machine",
+  "Cable",
+  "Bodyweight",
+];
+
+export const EQUIPMENT_LABELS: Record<Equipment, string> = {
+  Barbell: "Langhantel",
+  Dumbbell: "Kurzhantel",
+  Machine: "Maschinen",
+  Cable: "Kabel",
+  Bodyweight: "Körpergewicht",
+  Other: "Sonstiges",
+};
+
+/** Anatomical / activation region within a muscle group (Chest uses these). */
+export type ExerciseRegion = "Upper" | "Mid" | "Lower" | "Full";
+
+export const EXERCISE_REGIONS: ExerciseRegion[] = ["Upper", "Mid", "Lower", "Full"];
+
+export const REGION_LABELS: Record<ExerciseRegion, string> = {
+  Upper: "Obere Brust",
+  Mid: "Mittlere Brust",
+  Lower: "Untere Brust",
+  Full: "Ganze Brust",
+};
+
+export const FOCUS_LABELS: Record<TrainingFocus, string> = {
+  Hypertrophy: "Hypertrophie",
+  Strength: "Kraft",
+  Explosiveness: "Explosivität",
+};
+
 export type CatalogEntry = {
   name: string;
   focus: TrainingFocus;
+  equipment?: Equipment;
+  region?: ExerciseRegion;
 };
 
 export const EXERCISE_CATALOG: Record<MuscleGroupKey, CatalogEntry[]> = {
   Chest: [
-    { name: "Incline Dumbbell Press", focus: "Hypertrophy" },
-    { name: "Cable Flys", focus: "Hypertrophy" },
-    { name: "Pec Deck", focus: "Hypertrophy" },
-    { name: "Incline Cable Flys", focus: "Hypertrophy" },
-    { name: "Dumbbell Flys", focus: "Hypertrophy" },
-    { name: "Push-Ups", focus: "Hypertrophy" },
-    { name: "Machine Chest Press", focus: "Hypertrophy" },
-    { name: "Barbell Bench Press", focus: "Strength" },
-    { name: "Incline Barbell Press", focus: "Strength" },
-    { name: "Decline Bench Press", focus: "Strength" },
-    { name: "Dumbbell Bench Press", focus: "Strength" },
-    { name: "Chest Dips", focus: "Strength" },
-    { name: "Floor Press", focus: "Strength" },
-    { name: "Clap Push-Ups", focus: "Explosiveness" },
-    { name: "Medicine Ball Chest Pass", focus: "Explosiveness" },
-    { name: "Plyometric Push-Ups", focus: "Explosiveness" },
+    // 1) Obere Brust
+    { name: "Incline Barbell Bench Press", focus: "Strength", equipment: "Barbell", region: "Upper" },
+    { name: "Reverse-Grip Bench Press", focus: "Hypertrophy", equipment: "Barbell", region: "Upper" },
+    { name: "Incline Close-Grip Bench Press", focus: "Hypertrophy", equipment: "Barbell", region: "Upper" },
+    { name: "Incline Barbell Floor Press", focus: "Strength", equipment: "Barbell", region: "Upper" },
+    { name: "Incline Dumbbell Press", focus: "Hypertrophy", equipment: "Dumbbell", region: "Upper" },
+    { name: "Incline Dumbbell Flyes", focus: "Hypertrophy", equipment: "Dumbbell", region: "Upper" },
+    { name: "Incline Dumbbell Neutral-Grip Press", focus: "Hypertrophy", equipment: "Dumbbell", region: "Upper" },
+    { name: "Incline Dumbbell Around-the-World", focus: "Hypertrophy", equipment: "Dumbbell", region: "Upper" },
+    { name: "Incline Chest Press Machine", focus: "Hypertrophy", equipment: "Machine", region: "Upper" },
+    { name: "Incline Smith Machine Press", focus: "Strength", equipment: "Machine", region: "Upper" },
+    { name: "Incline Hammer Strength Press", focus: "Strength", equipment: "Machine", region: "Upper" },
+    { name: "Incline Cable Press", focus: "Hypertrophy", equipment: "Cable", region: "Upper" },
+    { name: "Single-Arm Incline Cable Press", focus: "Hypertrophy", equipment: "Cable", region: "Upper" },
+    { name: "Cable Upper Chest Raise", focus: "Hypertrophy", equipment: "Cable", region: "Upper" },
+    { name: "Decline Push-Ups (feet elevated)", focus: "Hypertrophy", equipment: "Bodyweight", region: "Upper" },
+    { name: "Pike Push-Ups", focus: "Hypertrophy", equipment: "Bodyweight", region: "Upper" },
+
+    // 2) Mittlere Brust
+    { name: "Barbell Bench Press", focus: "Strength", equipment: "Barbell", region: "Mid" },
+    { name: "Close-Grip Bench Press", focus: "Strength", equipment: "Barbell", region: "Mid" },
+    { name: "Wide-Grip Bench Press", focus: "Strength", equipment: "Barbell", region: "Mid" },
+    { name: "Spoto Press", focus: "Strength", equipment: "Barbell", region: "Mid" },
+    { name: "Flat Dumbbell Press", focus: "Strength", equipment: "Dumbbell", region: "Mid" },
+    { name: "Dumbbell Flyes", focus: "Hypertrophy", equipment: "Dumbbell", region: "Mid" },
+    { name: "Dumbbell Squeeze Press", focus: "Hypertrophy", equipment: "Dumbbell", region: "Mid" },
+    { name: "Dumbbell Around-the-World", focus: "Hypertrophy", equipment: "Dumbbell", region: "Mid" },
+    { name: "Dumbbell Hex Press", focus: "Hypertrophy", equipment: "Dumbbell", region: "Mid" },
+    { name: "Chest Press Machine", focus: "Hypertrophy", equipment: "Machine", region: "Mid" },
+    { name: "Hammer Strength Flat Press", focus: "Strength", equipment: "Machine", region: "Mid" },
+    { name: "Smith Machine Bench Press", focus: "Strength", equipment: "Machine", region: "Mid" },
+    { name: "Pec Deck", focus: "Hypertrophy", equipment: "Machine", region: "Mid" },
+    { name: "Cable Fly", focus: "Hypertrophy", equipment: "Cable", region: "Mid" },
+    { name: "Cable Press", focus: "Hypertrophy", equipment: "Cable", region: "Mid" },
+    { name: "Cable Squeeze Press", focus: "Hypertrophy", equipment: "Cable", region: "Mid" },
+    { name: "Single-Arm Cable Fly", focus: "Hypertrophy", equipment: "Cable", region: "Mid" },
+    { name: "Push-Ups", focus: "Hypertrophy", equipment: "Bodyweight", region: "Mid" },
+    { name: "Weighted Push-Ups", focus: "Strength", equipment: "Bodyweight", region: "Mid" },
+    { name: "Ring Push-Ups", focus: "Hypertrophy", equipment: "Bodyweight", region: "Mid" },
+    { name: "Ring Flyes", focus: "Hypertrophy", equipment: "Bodyweight", region: "Mid" },
+
+    // 3) Untere Brust
+    { name: "Decline Barbell Bench Press", focus: "Strength", equipment: "Barbell", region: "Lower" },
+    { name: "Decline Close-Grip Bench Press", focus: "Strength", equipment: "Barbell", region: "Lower" },
+    { name: "Decline Smith Machine Press", focus: "Strength", equipment: "Machine", region: "Lower" },
+    { name: "Decline Dumbbell Press", focus: "Hypertrophy", equipment: "Dumbbell", region: "Lower" },
+    { name: "Decline Dumbbell Flyes", focus: "Hypertrophy", equipment: "Dumbbell", region: "Lower" },
+    { name: "Dumbbell Pullover", focus: "Hypertrophy", equipment: "Dumbbell", region: "Lower" },
+    { name: "Decline Chest Press Machine", focus: "Hypertrophy", equipment: "Machine", region: "Lower" },
+    { name: "Hammer Strength Decline Press", focus: "Strength", equipment: "Machine", region: "Lower" },
+    { name: "Decline Cable Press", focus: "Hypertrophy", equipment: "Cable", region: "Lower" },
+    { name: "High-to-Low Cable Fly", focus: "Hypertrophy", equipment: "Cable", region: "Lower" },
+    { name: "Single-Arm Downward Cable Press", focus: "Hypertrophy", equipment: "Cable", region: "Lower" },
+    { name: "Dips (chest focus)", focus: "Strength", equipment: "Bodyweight", region: "Lower" },
+    { name: "Weighted Dips", focus: "Strength", equipment: "Bodyweight", region: "Lower" },
+    { name: "Decline Push-Ups", focus: "Hypertrophy", equipment: "Bodyweight", region: "Lower" },
+
+    // 4) Ganze Brust (+ explosiveness from Ziel)
+    { name: "Floor Press", focus: "Strength", equipment: "Barbell", region: "Full" },
+    { name: "Pin Press", focus: "Strength", equipment: "Barbell", region: "Full" },
+    { name: "Board Press", focus: "Strength", equipment: "Barbell", region: "Full" },
+    { name: "Dumbbell Bench Press", focus: "Strength", equipment: "Dumbbell", region: "Full" },
+    { name: "Cable Crossover", focus: "Hypertrophy", equipment: "Cable", region: "Full" },
+    { name: "Cable Crossover (low to high)", focus: "Hypertrophy", equipment: "Cable", region: "Full" },
+    { name: "Hammer Strength Iso-Lateral Press", focus: "Strength", equipment: "Machine", region: "Full" },
+    { name: "Archer Push-Ups", focus: "Hypertrophy", equipment: "Bodyweight", region: "Full" },
+    { name: "Speed Bench Press", focus: "Explosiveness", equipment: "Barbell", region: "Full" },
+    { name: "Plyo Push-Ups", focus: "Explosiveness", equipment: "Bodyweight", region: "Full" },
+    { name: "Clap Push-Ups", focus: "Explosiveness", equipment: "Bodyweight", region: "Full" },
+    { name: "Medicine Ball Chest Throws", focus: "Explosiveness", equipment: "Other", region: "Full" },
+    { name: "Explosive Smith Machine Press", focus: "Explosiveness", equipment: "Machine", region: "Full" },
+    { name: "Dynamic Effort Bench", focus: "Explosiveness", equipment: "Barbell", region: "Full" },
   ],
   Shoulders: [
-    { name: "Lateral Raises", focus: "Hypertrophy" },
-    { name: "Cable Lateral Raises", focus: "Hypertrophy" },
-    { name: "Front Raises", focus: "Hypertrophy" },
-    { name: "Rear Delt Flys", focus: "Hypertrophy" },
-    { name: "Face Pulls", focus: "Hypertrophy" },
-    { name: "Arnold Press", focus: "Hypertrophy" },
-    { name: "Reverse Pec Deck", focus: "Hypertrophy" },
-    { name: "Overhead Press", focus: "Strength" },
-    { name: "Dumbbell Shoulder Press", focus: "Strength" },
-    { name: "Machine Shoulder Press", focus: "Strength" },
-    { name: "Push Press", focus: "Strength" },
-    { name: "Shrugs", focus: "Strength" },
-    { name: "Medicine Ball Slam", focus: "Explosiveness" },
-    { name: "Kettlebell Snatch", focus: "Explosiveness" },
-    { name: "Landmine Push Press", focus: "Explosiveness" },
+    { name: "Lateral Raises", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Cable Lateral Raises", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Front Raises", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Rear Delt Flys", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Face Pulls", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Arnold Press", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Reverse Pec Deck", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Overhead Press", focus: "Strength", equipment: "Barbell" },
+    { name: "Dumbbell Shoulder Press", focus: "Strength", equipment: "Dumbbell" },
+    { name: "Machine Shoulder Press", focus: "Strength", equipment: "Machine" },
+    { name: "Push Press", focus: "Strength", equipment: "Barbell" },
+    { name: "Shrugs", focus: "Strength", equipment: "Barbell" },
+    { name: "Medicine Ball Slam", focus: "Explosiveness", equipment: "Other" },
+    { name: "Kettlebell Snatch", focus: "Explosiveness", equipment: "Other" },
+    { name: "Landmine Push Press", focus: "Explosiveness", equipment: "Barbell" },
   ],
   Arms: [
-    { name: "Biceps Curls", focus: "Hypertrophy" },
-    { name: "Hammer Curls", focus: "Hypertrophy" },
-    { name: "Concentration Curls", focus: "Hypertrophy" },
-    { name: "Preacher Curls", focus: "Hypertrophy" },
-    { name: "Cable Curls", focus: "Hypertrophy" },
-    { name: "Incline Curls", focus: "Hypertrophy" },
-    { name: "Triceps Pushdowns", focus: "Hypertrophy" },
-    { name: "Skull Crushers", focus: "Hypertrophy" },
-    { name: "Overhead Extension", focus: "Hypertrophy" },
-    { name: "Kickbacks", focus: "Hypertrophy" },
-    { name: "Close-Grip Bench Press", focus: "Strength" },
-    { name: "Weighted Chin-Ups", focus: "Strength" },
-    { name: "Triceps Dips", focus: "Strength" },
-    { name: "Barbell Curls", focus: "Strength" },
-    { name: "Medicine Ball Slam", focus: "Explosiveness" },
-    { name: "Battle Rope Waves", focus: "Explosiveness" },
+    { name: "Biceps Curls", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Hammer Curls", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Concentration Curls", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Preacher Curls", focus: "Hypertrophy", equipment: "Barbell" },
+    { name: "Cable Curls", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Incline Curls", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Triceps Pushdowns", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Skull Crushers", focus: "Hypertrophy", equipment: "Barbell" },
+    { name: "Overhead Extension", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Kickbacks", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Close-Grip Bench Press", focus: "Strength", equipment: "Barbell" },
+    { name: "Weighted Chin-Ups", focus: "Strength", equipment: "Bodyweight" },
+    { name: "Triceps Dips", focus: "Strength", equipment: "Bodyweight" },
+    { name: "Barbell Curls", focus: "Strength", equipment: "Barbell" },
+    { name: "Medicine Ball Slam", focus: "Explosiveness", equipment: "Other" },
+    { name: "Battle Rope Waves", focus: "Explosiveness", equipment: "Other" },
   ],
   Back: [
-    { name: "Lat Pulldown", focus: "Hypertrophy" },
-    { name: "Seated Cable Row", focus: "Hypertrophy" },
-    { name: "Chest-Supported Row", focus: "Hypertrophy" },
-    { name: "Straight-Arm Pulldown", focus: "Hypertrophy" },
-    { name: "Dumbbell Row", focus: "Hypertrophy" },
-    { name: "Hyperextensions", focus: "Hypertrophy" },
-    { name: "Pull-Ups", focus: "Strength" },
-    { name: "Barbell Row", focus: "Strength" },
-    { name: "T-Bar Row", focus: "Strength" },
-    { name: "Deadlift", focus: "Strength" },
-    { name: "Rack Pulls", focus: "Strength" },
-    { name: "Good Mornings", focus: "Strength" },
-    { name: "Kettlebell Swing", focus: "Explosiveness" },
-    { name: "Medicine Ball Slam", focus: "Explosiveness" },
-    { name: "Power Clean", focus: "Explosiveness" },
+    { name: "Lat Pulldown", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Seated Cable Row", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Chest-Supported Row", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Straight-Arm Pulldown", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Dumbbell Row", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Hyperextensions", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Pull-Ups", focus: "Strength", equipment: "Bodyweight" },
+    { name: "Barbell Row", focus: "Strength", equipment: "Barbell" },
+    { name: "T-Bar Row", focus: "Strength", equipment: "Barbell" },
+    { name: "Deadlift", focus: "Strength", equipment: "Barbell" },
+    { name: "Rack Pulls", focus: "Strength", equipment: "Barbell" },
+    { name: "Good Mornings", focus: "Strength", equipment: "Barbell" },
+    { name: "Kettlebell Swing", focus: "Explosiveness", equipment: "Other" },
+    { name: "Medicine Ball Slam", focus: "Explosiveness", equipment: "Other" },
+    { name: "Power Clean", focus: "Explosiveness", equipment: "Barbell" },
   ],
   Abdominals: [
-    { name: "Cable Crunch", focus: "Hypertrophy" },
-    { name: "Crunches", focus: "Hypertrophy" },
-    { name: "Hanging Leg Raises", focus: "Hypertrophy" },
-    { name: "Lying Leg Raises", focus: "Hypertrophy" },
-    { name: "Bicycle Crunches", focus: "Hypertrophy" },
-    { name: "Ab Wheel", focus: "Hypertrophy" },
-    { name: "Plank", focus: "Strength" },
-    { name: "Side Plank", focus: "Strength" },
-    { name: "Pallof Press", focus: "Strength" },
-    { name: "Dead Bug", focus: "Strength" },
-    { name: "Weighted Sit-Ups", focus: "Strength" },
-    { name: "Medicine Ball Rotational Throw", focus: "Explosiveness" },
-    { name: "Woodchoppers", focus: "Explosiveness" },
-    { name: "Russian Twists", focus: "Explosiveness" },
-    { name: "V-Ups", focus: "Explosiveness" },
+    { name: "Cable Crunch", focus: "Hypertrophy", equipment: "Cable" },
+    { name: "Crunches", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Hanging Leg Raises", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Lying Leg Raises", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Bicycle Crunches", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Ab Wheel", focus: "Hypertrophy", equipment: "Other" },
+    { name: "Plank", focus: "Strength", equipment: "Bodyweight" },
+    { name: "Side Plank", focus: "Strength", equipment: "Bodyweight" },
+    { name: "Pallof Press", focus: "Strength", equipment: "Cable" },
+    { name: "Dead Bug", focus: "Strength", equipment: "Bodyweight" },
+    { name: "Weighted Sit-Ups", focus: "Strength", equipment: "Dumbbell" },
+    { name: "Medicine Ball Rotational Throw", focus: "Explosiveness", equipment: "Other" },
+    { name: "Woodchoppers", focus: "Explosiveness", equipment: "Cable" },
+    { name: "Russian Twists", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "V-Ups", focus: "Explosiveness", equipment: "Bodyweight" },
   ],
   Legs: [
-    { name: "Leg Press", focus: "Hypertrophy" },
-    { name: "Hack Squat", focus: "Hypertrophy" },
-    { name: "Bulgarian Split Squat", focus: "Hypertrophy" },
-    { name: "Lunges", focus: "Hypertrophy" },
-    { name: "Leg Extensions", focus: "Hypertrophy" },
-    { name: "Leg Curls", focus: "Hypertrophy" },
-    { name: "Hip Thrust", focus: "Hypertrophy" },
-    { name: "Calf Raises", focus: "Hypertrophy" },
-    { name: "Seated Calf Raises", focus: "Hypertrophy" },
-    { name: "Back Squat", focus: "Strength" },
-    { name: "Front Squat", focus: "Strength" },
-    { name: "Romanian Deadlift", focus: "Strength" },
-    { name: "Goblet Squat", focus: "Strength" },
-    { name: "Box Squats", focus: "Strength" },
-    { name: "Jump Squats", focus: "Explosiveness" },
-    { name: "Box Jumps", focus: "Explosiveness" },
-    { name: "Broad Jumps", focus: "Explosiveness" },
-    { name: "Kettlebell Swing", focus: "Explosiveness" },
+    { name: "Leg Press", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Hack Squat", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Bulgarian Split Squat", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Lunges", focus: "Hypertrophy", equipment: "Dumbbell" },
+    { name: "Leg Extensions", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Leg Curls", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Hip Thrust", focus: "Hypertrophy", equipment: "Barbell" },
+    { name: "Calf Raises", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Seated Calf Raises", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Back Squat", focus: "Strength", equipment: "Barbell" },
+    { name: "Front Squat", focus: "Strength", equipment: "Barbell" },
+    { name: "Romanian Deadlift", focus: "Strength", equipment: "Barbell" },
+    { name: "Goblet Squat", focus: "Strength", equipment: "Dumbbell" },
+    { name: "Box Squats", focus: "Strength", equipment: "Barbell" },
+    { name: "Jump Squats", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Box Jumps", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Broad Jumps", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Kettlebell Swing", focus: "Explosiveness", equipment: "Other" },
   ],
 };
+
+export function catalogEntryForName(
+  group: MuscleGroupKey,
+  name: string,
+): CatalogEntry | undefined {
+  const key = name.trim().toLowerCase();
+  return EXERCISE_CATALOG[group].find((e) => e.name.toLowerCase() === key);
+}
 
 export function catalogFocusForName(
   group: MuscleGroupKey,
   name: string,
 ): TrainingFocus {
-  const key = name.trim().toLowerCase();
-  const match = EXERCISE_CATALOG[group].find((e) => e.name.toLowerCase() === key);
-  return match?.focus ?? "Hypertrophy";
+  return catalogEntryForName(group, name)?.focus ?? "Hypertrophy";
 }
 
 export const SUGGESTED_EXERCISES: Record<MuscleGroupKey, string[]> = {

@@ -4,15 +4,20 @@ import {
   EXERCISE_CATALOG,
   GROUP_LABELS,
   GROUP_SLUGS,
+  catalogEntryForName,
   catalogFocusForName,
   parseGroupParam,
   resolveMuscleGroup,
+  type Equipment,
+  type ExerciseRegion,
   type TrainingFocus,
 } from "@/lib/muscles";
 
 type CatalogExercise = {
   name: string;
   focus: TrainingFocus;
+  equipment: Equipment | null;
+  region: ExerciseRegion | null;
   fromCatalog: boolean;
   times: number;
   lastDate: string | null;
@@ -22,10 +27,11 @@ type CatalogExercise = {
 export async function GET(request: Request) {
   try {
     const groupParam = new URL(request.url).searchParams.get("group");
-    const group = parseGroupParam(groupParam);
-    if (!group) {
+    const parsed = parseGroupParam(groupParam);
+    if (!parsed) {
       return NextResponse.json({ error: "Unknown muscle group" }, { status: 400 });
     }
+    const group = parsed;
 
     const db = sql();
     const rows = await db`
@@ -62,14 +68,23 @@ export async function GET(request: Request) {
     const seen = new Set<string>();
     const exercises: CatalogExercise[] = [];
 
-    function add(name: string, focus: TrainingFocus, fromCatalog: boolean) {
+    function add(
+      name: string,
+      focus: TrainingFocus,
+      fromCatalog: boolean,
+      equipment: Equipment | null = null,
+      region: ExerciseRegion | null = null,
+    ) {
       const key = name.trim().toLowerCase();
       if (!key || seen.has(key)) return;
       seen.add(key);
       const logged = loggedByName.get(key);
+      const catalog = catalogEntryForName(group, name);
       exercises.push({
         name: logged?.displayName ?? name,
         focus,
+        equipment: equipment ?? catalog?.equipment ?? null,
+        region: region ?? catalog?.region ?? null,
         fromCatalog,
         times: logged?.times ?? 0,
         lastDate: logged?.lastDate ?? null,
@@ -78,7 +93,7 @@ export async function GET(request: Request) {
     }
 
     for (const entry of EXERCISE_CATALOG[group]) {
-      add(entry.name, entry.focus, true);
+      add(entry.name, entry.focus, true, entry.equipment ?? null, entry.region ?? null);
     }
     for (const logged of loggedByName.values()) {
       add(logged.displayName, catalogFocusForName(group, logged.displayName), false);

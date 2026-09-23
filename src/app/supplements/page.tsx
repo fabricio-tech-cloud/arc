@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GlassTimePicker } from "@/components/GlassTimePicker";
+import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
 import {
   DOSE_UNITS,
   SUPPLEMENT_CATALOG,
@@ -58,6 +59,7 @@ export default function SupplementsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null);
   const suggestWrapRef = useRef<HTMLDivElement>(null);
   const unitWrapRef = useRef<HTMLDivElement>(null);
   const filterWrapRef = useRef<HTMLDivElement>(null);
@@ -192,6 +194,7 @@ export default function SupplementsPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed");
       setConfirmId(null);
+      setSwipeOpenId(null);
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -315,7 +318,7 @@ export default function SupplementsPage() {
       await postLog({
         name: entry.name,
         dose: entry.dose,
-        notes: `${entry.effect} · ${entry.nutrition}`,
+        notes: null,
       });
       loadLogs();
     } catch (err) {
@@ -330,13 +333,13 @@ export default function SupplementsPage() {
       className="animate-rise space-y-10"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
-      {/* Schedule card */}
-      <section className="space-y-4 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
-        <form onSubmit={onSaveSchedule} className="grid gap-3">
-          <div ref={suggestWrapRef} className="relative grid gap-1 text-sm">
-            <label htmlFor="supp-name" className="text-[var(--muted)]">
-              Supplement
-            </label>
+      {/* Search above card */}
+      <form onSubmit={onSaveSchedule} className="space-y-4">
+        <div ref={suggestWrapRef} className="relative grid gap-1 text-sm">
+          <label htmlFor="supp-name" className="text-[var(--muted)]">
+            Supplement
+          </label>
+          <div className="relative w-full">
             <input
               id="supp-name"
               value={nameQuery}
@@ -360,240 +363,244 @@ export default function SupplementsPage() {
               placeholder="Tippen… z.B. Creatin, Omega, Zink"
               autoComplete="off"
               required
-              className={inputClass}
+              className={`w-full ${inputClass}`}
             />
-            {suggestOpen && suggestions.length > 0 && (
-              <ul
-                role="listbox"
-                className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-[1.75rem] bg-[var(--bg-elevated)] shadow-lg"
-              >
-                {suggestions.map((s, i) => (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={i === activeSuggest}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => pickSuggestion(s)}
-                      className={
-                        i === activeSuggest
-                          ? "flex w-full items-center gap-3 bg-[var(--bg-soft)] px-3 py-2 text-left"
-                          : "flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-soft)]"
-                      }
-                    >
-                      <img
-                        src={supplementImageSrc(s.imageFile)}
-                        alt=""
-                        width={32}
-                        height={32}
-                        className="h-8 w-8 shrink-0 rounded object-cover"
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{s.name}</span>
-                        <span className="block truncate text-xs text-[var(--muted)]">
-                          {s.category} · {s.dose}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {nameQuery.trim() && !selected && suggestions.length === 0 && (
-              <p className="text-xs text-[var(--muted)]">
-                Kein Katalog-Treffer — wird als eigener Name gespeichert.
-              </p>
-            )}
           </div>
-
-          {selected && (
-            <div className="flex items-center gap-3 rounded-[1.75rem] bg-[var(--bg)]/60 px-3 py-2">
-              <img
-                src={supplementImageSrc(selected.imageFile)}
-                alt=""
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-[1.75rem] object-cover"
-              />
-              <p className="text-xs text-[var(--muted)] line-clamp-2">{selected.effect}</p>
-            </div>
-          )}
-
-          <div className="grid gap-1 text-sm">
-            <span className="text-[var(--muted)]">Tage</span>
-            <div className="grid grid-cols-7 gap-1.5">
-              {WEEKDAYS.map((d) => {
-                const on = days.includes(d.value);
-                return (
+          {suggestOpen && suggestions.length > 0 && (
+            <ul
+              role="listbox"
+              className="absolute top-full z-30 mt-1 max-h-64 w-full overflow-auto rounded-[1.75rem] bg-[var(--bg-elevated)] shadow-lg"
+            >
+              {suggestions.map((s, i) => (
+                <li key={s.id}>
                   <button
-                    key={d.value}
                     type="button"
-                    onClick={() => toggleDay(d.value)}
+                    role="option"
+                    aria-selected={i === activeSuggest}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => pickSuggestion(s)}
                     className={
-                      on
-                        ? "arc-chrome w-full rounded-full py-2 text-center text-sm font-semibold"
-                        : "w-full rounded-full border border-[var(--line)] bg-[var(--bg)] py-2 text-center text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                      i === activeSuggest
+                        ? "flex w-full items-center gap-3 bg-[var(--bg-soft)] px-3 py-2 text-left"
+                        : "flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-soft)]"
                     }
                   >
-                    {d.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="grid gap-1 text-sm">
-              <span className="text-[var(--muted)]">Uhrzeit</span>
-              <GlassTimePicker value={timeOfDay} onChange={setTimeOfDay} />
-            </div>
-            <div className="grid gap-1 text-sm">
-              <span className="text-[var(--muted)]">Menge / Dosis</span>
-              <div className="flex rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
-                <input
-                  value={doseAmount}
-                  onChange={(e) => setDoseAmount(e.target.value)}
-                  placeholder="z.B. 5"
-                  inputMode="decimal"
-                  className="min-w-0 flex-1 rounded-l-[1.75rem] bg-transparent px-3 py-2 outline-none"
-                />
-                <div ref={unitWrapRef} className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setUnitOpen((o) => !o)}
-                    aria-haspopup="listbox"
-                    aria-expanded={unitOpen}
-                    className="flex h-full min-w-[4.75rem] items-center justify-center gap-1 rounded-r-[1.75rem] border-l border-[var(--line)] px-2.5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg-soft)]"
-                  >
-                    {doseUnit}
-                    <span className="text-[10px] text-[var(--muted)]" aria-hidden>
-                      ▾
+                    <img
+                      src={supplementImageSrc(s.imageFile)}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="h-10 w-14 shrink-0 rounded-[1.75rem] object-cover"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{s.name}</span>
+                      <span className="block truncate text-xs text-[var(--muted)]">
+                        {s.category} · {s.dose}
+                      </span>
                     </span>
                   </button>
-                  {unitOpen && (
-                    <ul
-                      role="listbox"
-                      aria-label="Maßeinheit wählen"
-                      className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 max-h-64 min-w-[10rem] overflow-auto rounded-[1.75rem] p-1.5"
+                </li>
+              ))}
+            </ul>
+          )}
+          {nameQuery.trim() && !selected && suggestions.length === 0 && (
+            <p className="text-xs text-[var(--muted)]">
+              Kein Katalog-Treffer — wird als eigener Name gespeichert.
+            </p>
+          )}
+        </div>
+
+        {selected && (
+          <div className="flex items-center gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] px-3 py-2">
+            <img
+              src={supplementImageSrc(selected.imageFile)}
+              alt=""
+              width={40}
+              height={40}
+              className="h-12 w-16 rounded-[1.75rem] object-cover"
+            />
+            <p className="text-xs text-[var(--muted)] line-clamp-2">{selected.effect}</p>
+          </div>
+        )}
+
+        <section className="space-y-4 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
+          <div className="grid gap-3">
+            <div className="grid gap-1 text-sm">
+              <span className="text-[var(--muted)]">Tage</span>
+              <div className="grid grid-cols-7 gap-1.5">
+                {WEEKDAYS.map((d) => {
+                  const on = days.includes(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => toggleDay(d.value)}
+                      className={
+                        on
+                          ? "arc-chrome w-full rounded-full py-2 text-center text-sm font-semibold"
+                          : "w-full rounded-full border border-[var(--line)] bg-[var(--bg)] py-2 text-center text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                      }
                     >
-                      {DOSE_UNITS.map((unit) => {
-                        const active = unit === doseUnit;
-                        return (
-                          <li key={unit}>
-                            <button
-                              type="button"
-                              role="option"
-                              aria-selected={active}
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => {
-                                setDoseUnit(unit);
-                                setUnitOpen(false);
-                              }}
-                              className={
-                                active
-                                  ? "arc-tab-active arc-tab-glow w-full rounded-full px-3 py-2 text-left text-sm font-semibold text-white"
-                                  : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
-                              }
-                            >
-                              {unit}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
+                      {d.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <label className="grid gap-1 text-sm sm:col-span-1">
-              <span className="text-[var(--muted)]">Notiz</span>
-              <input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="optional"
-                className={inputClass}
-              />
-            </label>
-          </div>
 
-          <div className="flex justify-center pt-2">
-            <button
-              type="submit"
-              disabled={busy || days.length === 0}
-              className="arc-chrome rounded-full px-8 py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50"
-            >
-              Zum Plan hinzufügen
-            </button>
-          </div>
-        </form>
-
-        {schedules.length > 0 && (
-          <ul className="divide-y divide-white/8">
-            {schedules.map((s) => {
-              const cat = s.catalog_id
-                ? findCatalogById(s.catalog_id)
-                : findCatalogByName(s.name);
-              const isToday = s.days.includes(today);
-              const already = loggedTodayNames.has(s.name.toLowerCase());
-              return (
-                <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-                  {cat ? (
-                    <img
-                      src={supplementImageSrc(cat.imageFile)}
-                      alt=""
-                      width={36}
-                      height={36}
-                      className="h-9 w-9 shrink-0 rounded-[1.75rem] object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
-                      —
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{s.name}</p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {formatDays(s.days)} · {s.time_of_day} · {s.dose || "—"}
-                      {s.notes ? ` · ${s.notes}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isToday && (
-                      <button
-                        type="button"
-                        disabled={busy || already}
-                        onClick={() => logSchedule(s)}
-                        className="arc-chrome rounded-[1.75rem] px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
-                      >
-                        {already ? "Geloggt" : "Loggen"}
-                      </button>
-                    )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-1 text-sm">
+                <span className="text-[var(--muted)]">Uhrzeit</span>
+                <GlassTimePicker value={timeOfDay} onChange={setTimeOfDay} />
+              </div>
+              <div className="grid gap-1 text-sm">
+                <span className="text-[var(--muted)]">Menge / Dosis</span>
+                <div className="flex rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
+                  <input
+                    value={doseAmount}
+                    onChange={(e) => setDoseAmount(e.target.value)}
+                    placeholder="z.B. 5"
+                    inputMode="decimal"
+                    className="min-w-0 flex-1 rounded-l-[1.75rem] bg-transparent px-3 py-2 outline-none"
+                  />
+                  <div ref={unitWrapRef} className="relative shrink-0">
                     <button
                       type="button"
-                      disabled={busy}
-                      onClick={() => deleteSchedule(s.id)}
-                      className="text-xs text-[var(--muted)] hover:text-[var(--danger)] disabled:opacity-50"
+                      onClick={() => setUnitOpen((o) => !o)}
+                      aria-haspopup="listbox"
+                      aria-expanded={unitOpen}
+                      className="flex h-full min-w-[4.75rem] items-center justify-center gap-1 rounded-r-[1.75rem] border-l border-[var(--line)] px-2.5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg-soft)]"
                     >
-                      Entfernen
+                      {doseUnit}
+                      <span className="text-[10px] text-[var(--muted)]" aria-hidden>
+                        ▾
+                      </span>
                     </button>
+                    {unitOpen && (
+                      <ul
+                        role="listbox"
+                        aria-label="Maßeinheit wählen"
+                        className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 max-h-64 min-w-[10rem] overflow-auto rounded-[1.75rem] p-1.5"
+                      >
+                        {DOSE_UNITS.map((unit) => {
+                          const active = unit === doseUnit;
+                          return (
+                            <li key={unit}>
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={active}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setDoseUnit(unit);
+                                  setUnitOpen(false);
+                                }}
+                                className={
+                                  active
+                                    ? "arc-tab-active arc-tab-glow w-full rounded-full px-3 py-2 text-left text-sm font-semibold text-white"
+                                    : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                                }
+                              >
+                                {unit}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                </div>
+              </div>
+              <label className="grid gap-1 text-sm sm:col-span-1">
+                <span className="text-[var(--muted)]">Notiz</span>
+                <input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="optional"
+                  className={inputClass}
+                />
+              </label>
+            </div>
 
-        {dueToday.length > 0 && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={logAllDueToday}
-            className="w-full rounded-[1.75rem] border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg)] disabled:opacity-50"
-          >
-            Heute fällig loggen ({dueToday.length})
-          </button>
-        )}
-      </section>
+            <div className="flex justify-center pt-2">
+              <button
+                type="submit"
+                disabled={busy || days.length === 0}
+                className="arc-chrome rounded-full px-8 py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50"
+              >
+                Zum Plan hinzufügen
+              </button>
+            </div>
+          </div>
+
+          {schedules.length > 0 && (
+            <ul className="divide-y divide-white/8">
+              {schedules.map((s) => {
+                const cat = s.catalog_id
+                  ? findCatalogById(s.catalog_id)
+                  : findCatalogByName(s.name);
+                const isToday = s.days.includes(today);
+                const already = loggedTodayNames.has(s.name.toLowerCase());
+                return (
+                  <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                    {cat ? (
+                      <img
+                        src={supplementImageSrc(cat.imageFile)}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="h-12 w-16 shrink-0 rounded-[1.75rem] object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
+                        —
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold">{s.name}</p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {formatDays(s.days)} · {s.time_of_day} · {s.dose || "—"}
+                        {s.notes ? ` · ${s.notes}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isToday && (
+                        <button
+                          type="button"
+                          disabled={busy || already}
+                          onClick={() => logSchedule(s)}
+                          className="arc-chrome rounded-[1.75rem] px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+                        >
+                          {already ? "Geloggt" : "Loggen"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => deleteSchedule(s.id)}
+                        className="text-xs text-[var(--muted)] hover:text-[var(--danger)] disabled:opacity-50"
+                      >
+                        Entfernen
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {dueToday.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={logAllDueToday}
+              className="w-full rounded-[1.75rem] border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg)] disabled:opacity-50"
+            >
+              Heute fällig loggen ({dueToday.length})
+            </button>
+          )}
+        </section>
+      </form>
 
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
@@ -681,7 +688,7 @@ export default function SupplementsPage() {
                 alt={s.name}
                 width={56}
                 height={56}
-                className="h-14 w-14 shrink-0 rounded-[1.75rem] object-cover bg-[var(--bg-soft)]"
+                className="h-20 w-24 shrink-0 rounded-[1.75rem] object-cover bg-[var(--bg-soft)]"
               />
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -711,73 +718,67 @@ export default function SupplementsPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Log</h2>
-        <ul className="divide-y divide-white/8 rounded-[1.75rem] bg-[var(--bg-elevated)]">
+        <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
           {items.length === 0 && (
             <li className="px-4 py-6 text-sm text-[var(--muted)]">Noch nichts geloggt.</li>
           )}
           {items.map((s) => {
             const cat = findCatalogByName(s.name);
+            const confirming = confirmId === s.id;
             return (
-              <li key={s.id} className="px-4 py-3">
-                {confirmId === s.id ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+              <li key={s.id} className="border-b border-white/8 last:border-b-0">
+                <SwipeDeleteRow
+                  open={swipeOpenId === s.id || confirming}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setSwipeOpenId(null);
+                      setConfirmId(null);
+                      return;
+                    }
+                    setSwipeOpenId(s.id);
+                  }}
+                  actionLabel={confirming ? (deleting ? "…" : "Entfernen") : "Löschen"}
+                  onDelete={() => {
+                    if (confirming) {
+                      if (!deleting) removeLog(s.id);
+                      return;
+                    }
+                    setConfirmId(s.id);
+                    setSwipeOpenId(s.id);
+                  }}
+                >
+                  {confirming ? (
                     <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={deleting}
-                        onClick={() => setConfirmId(null)}
-                        className="rounded-[1.75rem] px-3 py-1.5 text-sm text-white/50 transition hover:bg-white/8 hover:text-white"
-                      >
-                        Abbrechen
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deleting}
-                        onClick={() => removeLog(s.id)}
-                        className="rounded-[1.75rem] bg-red-500/15 px-3 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/25 disabled:opacity-50"
-                      >
-                        {deleting ? "…" : "Entfernen"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    {cat ? (
-                      <img
-                        src={supplementImageSrc(cat.imageFile)}
-                        alt=""
-                        width={36}
-                        height={36}
-                        className="h-9 w-9 shrink-0 rounded-[1.75rem] object-cover bg-[var(--bg-soft)]"
-                      />
-                    ) : (
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
-                        —
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        {cat ? (
+                          <img
+                            src={supplementImageSrc(cat.imageFile)}
+                            alt=""
+                            width={36}
+                            height={36}
+                            className="h-12 w-16 shrink-0 rounded-[1.75rem] object-cover bg-[var(--bg-soft)]"
+                          />
+                        ) : (
+                          <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-[1.75rem] bg-[var(--bg-soft)] text-xs text-[var(--muted)]">
+                            —
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{s.name}</p>
+                          <p className="truncate text-sm text-[var(--muted)]">
+                            {s.dose || "—"}
+                            {s.notes ? ` · ${s.notes}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">
+                        {s.time ? new Date(s.time).toLocaleString() : "—"}
                       </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{s.name}</p>
-                      <p className="text-sm text-[var(--muted)]">
-                        {s.dose || "—"}
-                        {s.notes ? ` · ${s.notes}` : ""}
-                      </p>
                     </div>
-                    <span className="text-xs tabular-nums text-[var(--muted)]">
-                      {s.time ? new Date(s.time).toLocaleString() : "—"}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="Eintrag entfernen"
-                      onClick={() => setConfirmId(s.id)}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/35 transition hover:bg-white/8 hover:text-white/80"
-                    >
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                  )}
+                </SwipeDeleteRow>
               </li>
             );
           })}

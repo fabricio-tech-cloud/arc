@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
 import { GROUP_LABELS, resolveMuscleGroup, type MuscleGroupKey } from "@/lib/muscles";
 
 type Entry = {
@@ -37,93 +38,6 @@ function workoutTitle(groups: (string | null)[], notes: string | null) {
   if (labels.length) return labels.join(" + ");
   if (notes?.trim()) return notes.trim();
   return "Workout";
-}
-
-const DELETE_W = 76;
-
-function SwipeDeleteRow({
-  open,
-  onOpenChange,
-  onDelete,
-  children,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onDelete: () => void;
-  children: ReactNode;
-}) {
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const startOffset = useRef(0);
-  const axis = useRef<"h" | "v" | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    if (!dragging) setOffset(open ? -DELETE_W : 0);
-  }, [open, dragging]);
-
-  function onTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    startX.current = t.clientX;
-    startY.current = t.clientY;
-    startOffset.current = open ? -DELETE_W : 0;
-    axis.current = null;
-    setDragging(true);
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    if (!dragging) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX.current;
-    const dy = t.clientY - startY.current;
-    if (!axis.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      axis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-    }
-    if (axis.current !== "h") return;
-    e.preventDefault();
-    const next = Math.min(0, Math.max(-DELETE_W, startOffset.current + dx));
-    setOffset(next);
-  }
-
-  function onTouchEnd() {
-    if (!dragging) return;
-    setDragging(false);
-    if (axis.current !== "h") {
-      setOffset(open ? -DELETE_W : 0);
-      return;
-    }
-    const shouldOpen = offset < -DELETE_W / 2;
-    onOpenChange(shouldOpen);
-    setOffset(shouldOpen ? -DELETE_W : 0);
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 flex" style={{ width: DELETE_W }}>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="flex h-full w-full items-center justify-center bg-[#ff3b30] text-[13px] font-semibold text-white"
-        >
-          Löschen
-        </button>
-      </div>
-      <div
-        className={`relative bg-[var(--bg-elevated)] px-4 py-3 touch-pan-y ${
-          dragging ? "" : "transition-transform duration-200 ease-out"
-        }`}
-        style={{ transform: `translateX(${offset}px)` }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
-      >
-        {children}
-      </div>
-    </div>
-  );
 }
 
 export default function JournalPage() {
@@ -378,55 +292,47 @@ export default function JournalPage() {
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
       <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
-        {entries.map((e) => (
-          <li key={e.id} className="border-b border-white/8 last:border-b-0">
-            {confirmId === e.id ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    onClick={() => {
-                      setConfirmId(null);
-                      setSwipeOpenId(null);
-                    }}
-                    className="rounded-[1.75rem] px-3 py-1.5 text-sm text-white/50 transition hover:bg-white/8 hover:text-white"
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    onClick={() => removeEntry(e.id)}
-                    className="rounded-[1.75rem] bg-red-500/15 px-3 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/25 disabled:opacity-50"
-                  >
-                    {deleting ? "…" : "Entfernen"}
-                  </button>
-                </div>
-              </div>
-            ) : (
+        {entries.map((e) => {
+          const confirming = confirmId === e.id;
+          return (
+            <li key={e.id} className="border-b border-white/8 last:border-b-0">
               <SwipeDeleteRow
-                open={swipeOpenId === e.id}
-                onOpenChange={(open) => setSwipeOpenId(open ? e.id : null)}
+                open={swipeOpenId === e.id || confirming}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setSwipeOpenId(null);
+                    setConfirmId(null);
+                    return;
+                  }
+                  setSwipeOpenId(e.id);
+                }}
+                actionLabel={confirming ? (deleting ? "…" : "Entfernen") : "Löschen"}
                 onDelete={() => {
-                  setSwipeOpenId(null);
+                  if (confirming) {
+                    if (!deleting) removeEntry(e.id);
+                    return;
+                  }
                   setConfirmId(e.id);
+                  setSwipeOpenId(e.id);
                 }}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold tabular-nums">{formatEntryDate(e.date)}</p>
-                    <p className="text-sm text-[var(--muted)]">{e.notes || "—"}</p>
+                {confirming ? (
+                  <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold tabular-nums">{formatEntryDate(e.date)}</p>
+                      <p className="text-sm text-[var(--muted)]">{e.notes || "—"}</p>
+                    </div>
+                    <span className="text-sm tabular-nums text-[var(--accent)]">
+                      Schlaf {e.sleep_hours ?? "—"}h
+                    </span>
                   </div>
-                  <span className="text-sm tabular-nums text-[var(--accent)]">
-                    Schlaf {e.sleep_hours ?? "—"}h
-                  </span>
-                </div>
+                )}
               </SwipeDeleteRow>
-            )}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -297,10 +297,10 @@ export function TodayCard({
                         alt=""
                         width={32}
                         height={32}
-                        className="h-8 w-8 shrink-0 rounded-[1.75rem] object-cover bg-white/8"
+                        className="h-10 w-14 shrink-0 rounded-[1.75rem] object-cover bg-white/8"
                       />
                     ) : (
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[1.75rem] bg-white/8 text-[10px] text-white/35">
+                      <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded-[1.75rem] bg-white/8 text-[10px] text-white/35">
                         —
                       </span>
                     )}
