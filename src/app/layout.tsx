@@ -19,6 +19,11 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Arc — Training & Recovery",
   description: "Track workouts, supplements, and how you feel — powered by Neon.",
+  appleWebApp: {
+    capable: true,
+    title: "Arc",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
