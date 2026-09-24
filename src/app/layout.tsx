@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, Syne } from "next/font/google";
+import localFont from "next/font/local";
 import { AppNav } from "@/components/AppNav";
 import { AppProviders } from "@/components/AppProviders";
 import "./globals.css";
@@ -16,6 +17,13 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700"],
 });
 
+const roba = localFont({
+  src: "./fonts/Roba-Regular.ttf",
+  variable: "--font-logo",
+  weight: "400",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Arc — Training & Recovery",
   description: "Track workouts, supplements, and how you feel — powered by Neon.",
@@ -28,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={`${syne.variable} ${manrope.variable}`}>
+    <html lang="de" className={`${syne.variable} ${manrope.variable} ${roba.variable}`}>
       <body>
         <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-24 pt-6 sm:px-6">
           <AppProviders>

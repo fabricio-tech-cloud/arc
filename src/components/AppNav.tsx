@@ -48,6 +48,7 @@ const links = [
 ];
 
 function sectionTitle(pathname: string) {
+  if (pathname.startsWith("/profile")) return "Profile";
   if (pathname.includes("/live")) return "Live";
   if (pathname.startsWith("/workouts/groups/")) {
     const slug = pathname.split("/")[3];
@@ -74,6 +75,16 @@ export function AppNav() {
   return (
     <>
       <header className="animate-rise relative flex flex-col items-center justify-center pb-2">
+        <Link
+          href="/profile"
+          aria-label="Profile"
+          className="absolute right-0 top-0 z-20 flex h-8 w-8 items-center justify-center rounded-full text-white/45 transition hover:bg-white/8 hover:text-white/80"
+        >
+          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="12" cy="8" r="3.25" />
+            <path d="M5.5 19.5c1.6-3.2 4-4.75 6.5-4.75s4.9 1.55 6.5 4.75" strokeLinecap="round" />
+          </svg>
+        </Link>
         <span
           className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-[58%] scale-x-[1.65] opacity-55"
           aria-hidden
@@ -83,13 +94,13 @@ export function AppNav() {
         <Link
           href="/"
           className="relative z-10 text-2xl font-normal tracking-[0.08em] text-[var(--text)] uppercase"
-          style={{ fontFamily: '"Times New Roman", Times, serif' }}
+          style={{ fontFamily: "var(--font-logo), sans-serif" }}
         >
           ARC
         </Link>
         <p
           className="relative z-10 mt-0.5 text-xs font-normal tracking-wide text-[var(--muted)]"
-          style={{ fontFamily: '"Times New Roman", Times, serif' }}
+          style={{ fontFamily: "var(--font-logo), sans-serif" }}
         >
           {section}
         </p>

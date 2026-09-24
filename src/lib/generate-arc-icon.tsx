@@ -4,16 +4,16 @@ import { ImageResponse } from "next/og";
 
 let fontPromise: Promise<Buffer> | null = null;
 
-function loadTinos(): Promise<Buffer> {
+function loadRoba(): Promise<Buffer> {
   if (!fontPromise) {
-    fontPromise = readFile(join(process.cwd(), "src/app/fonts/Tinos-Regular.ttf"));
+    fontPromise = readFile(join(process.cwd(), "src/app/fonts/Roba-Regular.ttf"));
   }
   return fontPromise;
 }
 
-/** Matches AppNav brand: Times-like serif, tracking 0.08em, --text on black. */
+/** Matches AppNav brand: Roba, tracking 0.08em, --text on black. */
 export async function generateArcIcon(size: number) {
-  const fontData = await loadTinos();
+  const fontData = await loadRoba();
   const fontSize = Math.round(size * 0.28);
 
   return new ImageResponse(
@@ -27,7 +27,7 @@ export async function generateArcIcon(size: number) {
           justifyContent: "center",
           background: "#000000",
           color: "#e8eaee",
-          fontFamily: "Tinos",
+          fontFamily: "Roba",
           fontSize,
           fontWeight: 400,
           letterSpacing: "0.08em",
@@ -42,7 +42,7 @@ export async function generateArcIcon(size: number) {
       height: size,
       fonts: [
         {
-          name: "Tinos",
+          name: "Roba",
           data: fontData,
           style: "normal",
           weight: 400,
