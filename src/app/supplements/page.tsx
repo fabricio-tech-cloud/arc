@@ -516,9 +516,13 @@ export default function SupplementsPage() {
               <button
                 type="submit"
                 disabled={busy || days.length === 0}
-                className="arc-chrome rounded-full px-8 py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50"
+                className="relative px-3 pb-2 pt-1 text-[13px] font-medium tracking-wide text-white transition hover:text-white/80 disabled:text-white/35 disabled:opacity-50"
               >
                 Add to plan
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-1.5 bottom-0 h-[2px] rounded-full bg-[var(--accent)] opacity-90 shadow-[0_0_8px_rgba(200,206,214,0.35)]"
+                />
               </button>
             </div>
           </div>
