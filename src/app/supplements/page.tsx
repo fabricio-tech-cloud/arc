@@ -337,7 +337,7 @@ export default function SupplementsPage() {
       {/* Search above card */}
       <form onSubmit={onSaveSchedule} className="space-y-4">
         <div ref={suggestWrapRef} className="relative grid gap-1 text-sm">
-          <label htmlFor="supp-name" className="text-[var(--muted)]">
+          <label htmlFor="supp-name" className="text-white">
             Supplement
           </label>
           <div className="relative w-full">
