@@ -95,25 +95,6 @@ body {
   }
 }
 
-/* This week — desktop only: black card + hairline rainbow rim (no mask — avoids scroll flicker) */
-@media (min-width: 1024px) {
-  .arc-week-card {
-    border: 1px solid transparent !important;
-    background:
-      linear-gradient(#000000, #000000) padding-box,
-      linear-gradient(
-        135deg,
-        rgba(255, 99, 132, 0.55),
-        rgba(255, 206, 84, 0.5),
-        rgba(72, 219, 151, 0.5),
-        rgba(84, 160, 255, 0.55),
-        rgba(162, 155, 254, 0.55),
-        rgba(255, 99, 132, 0.45)
-      )
-      border-box !important;
-  }
-}
-
 /* Keep scroll, hide the track/thumb chrome */
 .arc-scroll {
   scrollbar-width: none;

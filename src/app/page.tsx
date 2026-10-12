@@ -128,16 +128,12 @@ export default function OverviewPage() {
         </p>
       )}
 
-      <div className="lg:col-span-12 lg:mt-10 lg:mb-2 lg:flex lg:justify-center">
-        <div className="w-full lg:max-w-2xl">
-          <ThisWeekStrip days={data?.thisWeek ?? []} today={data?.today ?? null} />
-        </div>
+      <div className="lg:col-span-12 lg:mt-10 lg:mb-2">
+        <ThisWeekStrip days={data?.thisWeek ?? []} today={data?.today ?? null} />
       </div>
 
-      <div className="lg:col-span-12 lg:mb-2 lg:flex lg:justify-center">
-        <div className="w-full lg:max-w-2xl">
-          <TodayCard plan={data?.todayPlan ?? null} supplementImageSrc={supplementImageSrc} />
-        </div>
+      <div className="lg:col-span-12 lg:mb-2">
+        <TodayCard plan={data?.todayPlan ?? null} supplementImageSrc={supplementImageSrc} />
       </div>
 
       <div className="space-y-3 lg:col-span-12 lg:space-y-4">

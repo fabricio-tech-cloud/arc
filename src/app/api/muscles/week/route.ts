@@ -116,14 +116,9 @@ export async function GET() {
       volumes[group] = (volumes[group] ?? 0) + vol;
     }
 
-    const exercisesByGroup: Record<MuscleGroupKey, ExAgg[]> = {
-      Chest: [],
-      Shoulders: [],
-      Arms: [],
-      Back: [],
-      Abdominals: [],
-      Legs: [],
-    };
+    const exercisesByGroup = Object.fromEntries(
+      TRAINING_GROUPS.map((key) => [key, [] as ExAgg[]]),
+    ) as Record<MuscleGroupKey, ExAgg[]>;
 
     for (const agg of byExercise.values()) {
       const group = resolveMuscleGroup(agg.muscle_group);

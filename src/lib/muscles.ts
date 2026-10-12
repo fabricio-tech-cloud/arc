@@ -6,7 +6,8 @@ export type MuscleGroupKey =
   | "Chest"
   | "Back"
   | "Abdominals"
-  | "Legs";
+  | "Legs"
+  | "Field";
 
 export const TRAINING_GROUPS: MuscleGroupKey[] = [
   "Chest",
@@ -15,6 +16,7 @@ export const TRAINING_GROUPS: MuscleGroupKey[] = [
   "Back",
   "Abdominals",
   "Legs",
+  "Field",
 ];
 
 export const GROUP_LABELS: Record<MuscleGroupKey, string> = {
@@ -24,6 +26,7 @@ export const GROUP_LABELS: Record<MuscleGroupKey, string> = {
   Back: "Back",
   Abdominals: "Abs",
   Legs: "Legs",
+  Field: "Field",
 };
 
 export const GROUP_SLUGS: Record<MuscleGroupKey, string> = {
@@ -33,6 +36,7 @@ export const GROUP_SLUGS: Record<MuscleGroupKey, string> = {
   Back: "ruecken",
   Abdominals: "bauch",
   Legs: "beine",
+  Field: "field",
 };
 
 export function groupPath(group: MuscleGroupKey) {
@@ -56,6 +60,7 @@ export const GROUP_ABBR: Record<MuscleGroupKey, string> = {
   Back: "Bk",
   Abdominals: "Ab",
   Legs: "Lg",
+  Field: "Fd",
 };
 
 export const GROUP_VIEW: Record<MuscleGroupKey, "FRONT" | "BACK"> = {
@@ -65,6 +70,7 @@ export const GROUP_VIEW: Record<MuscleGroupKey, "FRONT" | "BACK"> = {
   Back: "BACK",
   Abdominals: "FRONT",
   Legs: "FRONT",
+  Field: "FRONT",
 };
 
 /** IDs mirrored from body-muscles MUSCLE_GROUPS (avoids static CJS/ESM issues). */
@@ -151,6 +157,27 @@ export const GROUP_MUSCLE_IDS: Record<MuscleGroupKey, string[]> = {
     "hip-flexor-left",
     "hip-flexor-right",
   ],
+  /** Athletics / field work — highlight lower body + core on the map */
+  Field: [
+    "quads-left",
+    "quads-right",
+    "hamstrings-medial-left",
+    "hamstrings-lateral-left",
+    "hamstrings-medial-right",
+    "hamstrings-lateral-right",
+    "gluteus-maximus-left",
+    "gluteus-maximus-right",
+    "calves-gastroc-medial-left",
+    "calves-gastroc-lateral-left",
+    "calves-gastroc-medial-right",
+    "calves-gastroc-lateral-right",
+    "hip-flexor-left",
+    "hip-flexor-right",
+    "abs-upper-left",
+    "abs-upper-right",
+    "abs-lower-left",
+    "abs-lower-right",
+  ],
 };
 
 const ALIASES: Record<string, MuscleGroupKey> = {
@@ -197,6 +224,13 @@ const ALIASES: Record<string, MuscleGroupKey> = {
   hamstrings: "Legs",
   calves: "Legs",
   waden: "Legs",
+  field: "Field",
+  athletics: "Field",
+  athletic: "Field",
+  sprint: "Field",
+  running: "Field",
+  cardio: "Field",
+  conditioning: "Field",
 };
 
 export function resolveMuscleGroup(raw: string | null | undefined): MuscleGroupKey | null {
@@ -476,6 +510,32 @@ export const EXERCISE_CATALOG: Record<MuscleGroupKey, CatalogEntry[]> = {
     { name: "Broad Jumps", focus: "Explosiveness", equipment: "Bodyweight" },
     { name: "Kettlebell Swing", focus: "Explosiveness", equipment: "Other" },
   ],
+  Field: [
+    { name: "40-yard dash", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "60 m Sprint", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "100 m Sprint", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "200 m Sprint", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "400 m", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "800 m", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "1500 m", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "5 km Run", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "10 km Run", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Cooper Test", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Beep Test", focus: "Hypertrophy", equipment: "Bodyweight" },
+    { name: "Pro Agility (5-10-5)", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "T-Test", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Vertical Jump", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Standing Long Jump", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Box Jump", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Hill Sprints", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Shuttle Runs", focus: "Explosiveness", equipment: "Bodyweight" },
+    { name: "Sled Push", focus: "Strength", equipment: "Other" },
+    { name: "Sled Pull", focus: "Strength", equipment: "Other" },
+    { name: "Farmer Carry", focus: "Strength", equipment: "Dumbbell" },
+    { name: "Battle Ropes", focus: "Explosiveness", equipment: "Other" },
+    { name: "Row 2000 m", focus: "Hypertrophy", equipment: "Machine" },
+    { name: "Assault Bike Intervals", focus: "Explosiveness", equipment: "Machine" },
+  ],
 };
 
 export function catalogEntryForName(
@@ -510,6 +570,9 @@ export const SUGGESTED_EXERCISES: Record<MuscleGroupKey, string[]> = {
     .slice(0, 4)
     .map((e) => e.name),
   Legs: EXERCISE_CATALOG.Legs.filter((e) => e.focus === "Hypertrophy")
+    .slice(0, 4)
+    .map((e) => e.name),
+  Field: EXERCISE_CATALOG.Field.filter((e) => e.focus === "Explosiveness")
     .slice(0, 4)
     .map((e) => e.name),
 };

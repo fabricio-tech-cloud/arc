@@ -164,6 +164,15 @@ export default function JournalPage() {
   return (
     <div className="animate-rise space-y-8 lg:grid lg:grid-cols-12 lg:gap-8 lg:space-y-0">
       <div className="space-y-8 lg:col-span-5">
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between gap-2 px-1">
+          <h2
+            className="text-lg font-semibold"
+            style={{ fontFamily: '"Times New Roman", Times, serif' }}
+          >
+            Sleep
+          </h2>
+        </div>
       <form
         onSubmit={onSubmit}
         className="grid gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 sm:grid-cols-2"
@@ -206,6 +215,7 @@ export default function JournalPage() {
           Save
         </button>
       </form>
+      </section>
 
       <section className="space-y-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
         <div className="flex items-baseline justify-between gap-2">

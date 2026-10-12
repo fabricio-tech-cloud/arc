@@ -263,7 +263,7 @@ export function ThisWeekStrip({
 
   return (
     <div
-      className={`arc-week-card relative rounded-[1.75rem] bg-[var(--bg-elevated)] transition-[padding] duration-300 ${
+      className={`relative rounded-[1.75rem] bg-[var(--bg-elevated)] transition-[padding] duration-300 lg:border lg:border-white/10 lg:bg-black/50 ${
         expanded ? "p-4 sm:p-5" : "p-4"
       }`}
     >
@@ -341,7 +341,7 @@ export function ThisWeekStrip({
             ))}
           </button>
           <p className="mt-3 text-[10px] leading-relaxed text-white/30">
-            Keys: Ch Chest · Sh Shoulders · Ar Arms · Bk Back · Ab Abs · Lg Legs
+            Keys: Ch Chest · Sh Shoulders · Ar Arms · Bk Back · Ab Abs · Lg Legs · Fd Field
             {days.some((d) => d.scheduled) ? " · Highlight = planned session" : ""}
             {" · Tap to expand"}
           </p>

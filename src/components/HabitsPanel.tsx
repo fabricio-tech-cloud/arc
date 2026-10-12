@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
+import { useIsExtendedViewport } from "@/components/ViewportDensity";
 import {
   HABIT_COLORS,
   HABIT_ICONS,
@@ -94,12 +95,12 @@ function FlameIcon({ color }: { color: string }) {
 function Heatmap({
   completed,
   color,
-  weeks = 20,
 }: {
   completed: Set<string>;
   color: string;
-  weeks?: number;
 }) {
+  const extended = useIsExtendedViewport();
+  const weeks = extended ? 32 : 20;
   const cols = useMemo(() => heatmapDates(weeks), [weeks]);
   const today = useMemo(() => {
     const d = new Date();
@@ -108,18 +109,18 @@ function Heatmap({
 
   return (
     <div
-      className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-2"
       aria-hidden
     >
       {cols.map((col, ci) => (
-        <div key={ci} className="flex shrink-0 flex-col gap-[3px]">
+        <div key={ci} className="flex shrink-0 flex-col gap-[3px] lg:gap-1">
           {col.map((date) => {
             const on = completed.has(date);
             const future = date > today;
             return (
               <span
                 key={date}
-                className="h-[9px] w-[9px] rounded-[2px]"
+                className="h-[9px] w-[9px] rounded-[2px] lg:h-[14px] lg:w-[14px] lg:rounded-[3px]"
                 style={{
                   backgroundColor: on
                     ? color

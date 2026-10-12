@@ -274,7 +274,7 @@ export default function WorkoutsPage() {
         >
           Muscle groups
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
           {groupCards.map((g) => {
             const miniState = bodyStateForGroupOnly(g.key, g.intensity > 0 ? g.intensity : 2);
             return (
