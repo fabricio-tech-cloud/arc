@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FieldWatermark } from "@/components/FieldWatermark";
+import { HabitsPanel } from "@/components/HabitsPanel";
 import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
 import { GROUP_LABELS, resolveMuscleGroup, type MuscleGroupKey } from "@/lib/muscles";
 
@@ -160,44 +162,48 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="animate-rise space-y-8">
+    <div className="animate-rise space-y-8 lg:grid lg:grid-cols-12 lg:gap-8 lg:space-y-0">
+      <div className="space-y-8 lg:col-span-5">
       <form
         onSubmit={onSubmit}
         className="grid gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 sm:grid-cols-2"
       >
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--muted)]">Datum</span>
+        <label className="relative block overflow-hidden rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
+          <span className="sr-only">Date</span>
+          <FieldWatermark label="Date" className="right-10" />
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="relative z-10 w-full bg-transparent px-3 py-2 pr-14 outline-none"
           />
         </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-[var(--muted)]">Schlaf (h)</span>
+        <label className="relative block overflow-hidden rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
+          <span className="sr-only">Schlaf (Stunden)</span>
+          <FieldWatermark label="Sleep" />
           <input
             type="number"
             step="0.1"
             value={sleep}
             onChange={(e) => setSleep(e.target.value)}
-            className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="relative z-10 w-full bg-transparent px-3 py-2 pr-16 outline-none"
           />
         </label>
-        <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block text-[var(--muted)]">Notiz</span>
+        <label className="relative block overflow-hidden rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)] sm:col-span-2">
+          <span className="sr-only">Note</span>
+          <FieldWatermark label="Notes" />
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="relative z-10 w-full resize-none bg-transparent px-3 py-2 pr-16 outline-none"
           />
         </label>
         <button
           type="submit"
           className="arc-chrome rounded-[1.75rem] px-4 py-2 font-semibold sm:col-span-2 sm:w-fit"
         >
-          Speichern
+          Save
         </button>
       </form>
 
@@ -214,12 +220,12 @@ export default function JournalPage() {
 
         {dayWorkouts.length === 0 ? (
           <div className="space-y-3">
-            <p className="text-sm text-[var(--muted)]">Keine Workouts an diesem Tag.</p>
+            <p className="text-sm text-[var(--muted)]">No workouts on this day.</p>
             <Link
               href="/workouts"
               className="inline-flex text-[13px] text-white/55 underline-offset-2 hover:text-white hover:underline"
             >
-              Workout anlegen →
+              Create workout →
             </Link>
           </div>
         ) : (
@@ -237,7 +243,7 @@ export default function JournalPage() {
                 >
                   {confirming ? (
                     <div className="flex flex-wrap items-center justify-between gap-3 p-3">
-                      <p className="text-sm text-white/70">Session wirklich entfernen?</p>
+                      <p className="text-sm text-white/70">Remove this session?</p>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -245,7 +251,7 @@ export default function JournalPage() {
                           onClick={() => setConfirmWorkoutId(null)}
                           className="rounded-[1.75rem] px-3 py-1.5 text-xs text-white/60 hover:text-white"
                         >
-                          Abbrechen
+                          Cancel
                         </button>
                         <button
                           type="button"
@@ -253,7 +259,7 @@ export default function JournalPage() {
                           onClick={() => void removeWorkout(w.id)}
                           className="rounded-[1.75rem] bg-[#ff3b30] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                         >
-                          {deletingWorkout ? "…" : "Entfernen"}
+                          {deletingWorkout ? "..." : "Remove"}
                         </button>
                       </div>
                     </div>
@@ -263,8 +269,8 @@ export default function JournalPage() {
                         <div className="min-w-0">
                           <p className="truncate text-[15px] font-medium text-white">{title}</p>
                           <p className="mt-0.5 text-[12px] text-white/40">
-                            {w.exercise_count} Übungen
-                            {w.completed ? " · erledigt" : ""}
+                            {w.exercise_count} exercises
+                            {w.completed ? " · done" : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -278,7 +284,7 @@ export default function JournalPage() {
                                 : "bg-white/8 text-white/70 hover:bg-white/12 hover:text-white"
                             }`}
                           >
-                            {w.completed ? "Erledigt" : "Erledigen"}
+                            {w.completed ? "Done" : "Mark done"}
                           </button>
                           <button
                             type="button"
@@ -286,14 +292,14 @@ export default function JournalPage() {
                             onClick={() => setConfirmWorkoutId(w.id)}
                             className="rounded-[1.75rem] bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/25 hover:text-red-200 disabled:opacity-50"
                           >
-                            Löschen
+                            Delete
                           </button>
                         </div>
                       </div>
 
                       <div className="grid gap-2 sm:grid-cols-[1fr_7rem]">
                         <label className="text-sm">
-                          <span className="mb-1 block text-[11px] text-white/40">Notiz</span>
+                          <span className="mb-1 block text-[11px] text-white/40">Note</span>
                           <input
                             type="text"
                             defaultValue={w.notes ?? ""}
@@ -305,12 +311,12 @@ export default function JournalPage() {
                                 patchWorkout(w.id, { notes: next });
                               }
                             }}
-                            placeholder="Session-Notiz…"
+                            placeholder="Session note..."
                             className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
                           />
                         </label>
                         <label className="text-sm">
-                          <span className="mb-1 block text-[11px] text-white/40">Zeit (min)</span>
+                          <span className="mb-1 block text-[11px] text-white/40">Time (min)</span>
                           <input
                             type="number"
                             min={0}
@@ -335,7 +341,7 @@ export default function JournalPage() {
                         href={`/workouts/${w.id}`}
                         className="inline-flex text-[12px] text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
                       >
-                        Session öffnen →
+                        {"Open session ->"}
                       </Link>
                     </div>
                   )}
@@ -345,6 +351,10 @@ export default function JournalPage() {
           </ul>
         )}
       </section>
+      </div>
+
+      <div className="space-y-8 lg:col-span-7">
+      <HabitsPanel />
 
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
@@ -363,7 +373,7 @@ export default function JournalPage() {
                   }
                   setSwipeOpenId(e.id);
                 }}
-                actionLabel={confirming ? (deleting ? "…" : "Entfernen") : "Löschen"}
+                actionLabel={confirming ? (deleting ? "..." : "Remove") : "Delete"}
                 onDelete={() => {
                   if (confirming) {
                     if (!deleting) removeEntry(e.id);
@@ -374,7 +384,7 @@ export default function JournalPage() {
                 }}
               >
                 {confirming ? (
-                  <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
+                  <p className="text-sm text-white/70">Remove this entry?</p>
                 ) : (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -391,6 +401,7 @@ export default function JournalPage() {
           );
         })}
       </ul>
+      </div>
     </div>
   );
 }

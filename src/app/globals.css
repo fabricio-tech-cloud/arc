@@ -15,6 +15,32 @@
   --danger: #ff6b6b;
   --font-display: "Syne", system-ui, sans-serif;
   --font-body: "Manrope", system-ui, sans-serif;
+  /* Compact (mobile) density — switches at 1024px */
+  --shell-pad-x: 1rem;
+  --shell-pad-y: 1.5rem;
+  --shell-pad-bottom: 6rem;
+  --content-gap: 0.75rem;
+  /* Compact: unused rail · Extended: icon rail */
+  --sidebar-width: 4.25rem;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --shell-pad-x: 2.5rem;
+    --shell-pad-y: 2rem;
+    --shell-pad-bottom: 2.5rem;
+    --content-gap: 1.5rem;
+    /* Desktop panels: same surface as Overview / Workouts */
+    --bg-elevated: rgba(0, 0, 0, 0.5);
+    --bg-soft: rgba(0, 0, 0, 0.62);
+    --line: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Soft rim on elevated rounded panels */
+  .rounded-\[1\.75rem\].bg-\[var\(--bg-elevated\)\],
+  .rounded-\[1\.35rem\].bg-\[var\(--bg-elevated\)\] {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 * {
@@ -32,6 +58,59 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   background: #000000;
+}
+
+/* Extended ≥ 1024: painting lives inside the framed stage (right of rail) */
+@media (min-width: 1024px) {
+  body {
+    background: #050505;
+  }
+
+  .arc-stage {
+    background-color: #9eb6d0;
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(12, 14, 18, 0.42) 0%,
+        rgba(12, 14, 18, 0.28) 45%,
+        rgba(12, 14, 18, 0.48) 100%
+      ),
+      url("/desktop-bg.jpg");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+}
+
+/* This week — desktop only: black card + hairline rainbow rim (no mask — avoids scroll flicker) */
+@media (min-width: 1024px) {
+  .arc-week-card {
+    border: 1px solid transparent !important;
+    background:
+      linear-gradient(#000000, #000000) padding-box,
+      linear-gradient(
+        135deg,
+        rgba(255, 99, 132, 0.55),
+        rgba(255, 206, 84, 0.5),
+        rgba(72, 219, 151, 0.5),
+        rgba(84, 160, 255, 0.55),
+        rgba(162, 155, 254, 0.55),
+        rgba(255, 99, 132, 0.45)
+      )
+      border-box !important;
+  }
+}
+
+/* Keep scroll, hide the track/thumb chrome */
+.arc-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.arc-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 a {
@@ -193,7 +272,72 @@ textarea {
 }
 
 .arc-body-map-lg .body-chart-svg {
-  max-height: 420px !important;
+  max-height: 380px !important;
+  width: 100% !important;
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.55)) !important;
+}
+
+.arc-body-map-lg.body-chart-container {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Mobile / default (black shell): light figure */
+.arc-body-map-lg .body-chart-muscle {
+  fill-opacity: 1 !important;
+  stroke: rgba(255, 255, 255, 0.35) !important;
+  stroke-width: 0.14px !important;
+}
+
+.arc-body-map-lg .body-chart-background {
+  opacity: 0.2 !important;
+}
+
+.arc-body-map-lg .body-chart-background path {
+  fill: #e8eaee !important;
+}
+
+.arc-body-map-lg .body-chart-view-label {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Desktop: white idle → lilac intensity */
+@media (min-width: 1024px) {
+  .arc-body-map .body-chart-muscle {
+    fill-opacity: 1 !important;
+    stroke: rgba(0, 0, 0, 0.22) !important;
+    stroke-width: 0.14px !important;
+    transition: fill 180ms ease-out, stroke 180ms ease-out !important;
+  }
+
+  .arc-body-map .body-chart-muscle[aria-label*="(selected)"] {
+    stroke: rgba(46, 24, 77, 0.95) !important;
+    stroke-width: 0.32px !important;
+    filter: drop-shadow(0 0 6px rgba(76, 42, 130, 0.55)) !important;
+  }
+
+  .arc-body-map-lg .body-chart-background {
+    opacity: 0.22 !important;
+  }
+
+  .arc-body-map-lg .body-chart-background path {
+    fill: #ffffff !important;
+  }
+
+  .arc-body-map-sm .body-chart-background {
+    opacity: 0.18 !important;
+  }
+
+  .arc-body-map-sm .body-chart-background path {
+    fill: #ffffff !important;
+  }
+
+  .arc-body-map-lg .body-chart-view-label {
+    color: rgba(255, 255, 255, 0.75) !important;
+  }
 }
 
 .arc-tabbar-glass {
@@ -217,6 +361,43 @@ textarea {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
+}
+
+/* Desktop: no backdrop-blur in scrolling shell (avoids Chromium flicker bars) */
+@media (min-width: 1024px) {
+  .arc-tabbar-glass,
+  .arc-tab-active {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .arc-tabbar-glass {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Date inputs: calendar icon on the right */
+input[type="date"] {
+  position: relative;
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.55;
+  filter: invert(1);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.9;
 }
 
 /* Chrome / silver primary fill */

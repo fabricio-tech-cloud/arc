@@ -1,12 +1,13 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FieldWatermark } from "@/components/FieldWatermark";
 import { GlassTimePicker } from "@/components/GlassTimePicker";
 import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
+import { WeekdayToggle } from "@/components/WeekdayToggle";
 import {
   DOSE_UNITS,
   SUPPLEMENT_CATALOG,
-  WEEKDAYS,
   findCatalogById,
   findCatalogByName,
   formatDays,
@@ -213,7 +214,7 @@ export default function SupplementsPage() {
     e.preventDefault();
     const name = nameQuery.trim();
     if (!name || days.length === 0) {
-      setError("Supplement und mindestens einen Tag wählen.");
+      setError("Pick a supplement and at least one day.");
       return;
     }
     setBusy(true);
@@ -360,7 +361,7 @@ export default function SupplementsPage() {
                   setSuggestOpen(false);
                 }
               }}
-              placeholder="Tippen… z.B. Creatin, Omega, Zink"
+              placeholder="Type... e.g. creatine, omega, zinc"
               autoComplete="off"
               required
               className={`w-full ${inputClass}`}
@@ -405,7 +406,7 @@ export default function SupplementsPage() {
           )}
           {nameQuery.trim() && !selected && suggestions.length === 0 && (
             <p className="text-xs text-[var(--muted)]">
-              Kein Katalog-Treffer — wird als eigener Name gespeichert.
+              No catalog match - saved as a custom name.
             </p>
           )}
         </div>
@@ -426,98 +427,87 @@ export default function SupplementsPage() {
         <section className="space-y-4 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
           <div className="grid gap-3">
             <div className="grid gap-1 text-sm">
-              <span className="text-[var(--muted)]">Tage</span>
-              <div className="grid grid-cols-7 gap-1.5">
-                {WEEKDAYS.map((d) => {
-                  const on = days.includes(d.value);
-                  return (
-                    <button
-                      key={d.value}
-                      type="button"
-                      onClick={() => toggleDay(d.value)}
-                      className={
-                        on
-                          ? "arc-chrome w-full rounded-full py-2 text-center text-sm font-semibold"
-                          : "w-full rounded-full border border-[var(--line)] bg-[var(--bg)] py-2 text-center text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
-                      }
-                    >
-                      {d.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <span className="text-[var(--muted)]">Days</span>
+              <WeekdayToggle days={days} onToggle={toggleDay} />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="grid gap-1 text-sm">
-                <span className="text-[var(--muted)]">Uhrzeit</span>
-                <GlassTimePicker value={timeOfDay} onChange={setTimeOfDay} />
+              <div className="text-sm">
+                <GlassTimePicker value={timeOfDay} onChange={setTimeOfDay} watermark="Time" />
               </div>
-              <div className="grid gap-1 text-sm">
-                <span className="text-[var(--muted)]">Menge / Dosis</span>
-                <div className="flex rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)]">
-                  <input
-                    value={doseAmount}
-                    onChange={(e) => setDoseAmount(e.target.value)}
-                    placeholder="z.B. 5"
-                    inputMode="decimal"
-                    className="min-w-0 flex-1 rounded-l-[1.75rem] bg-transparent px-3 py-2 outline-none"
-                  />
-                  <div ref={unitWrapRef} className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setUnitOpen((o) => !o)}
-                      aria-haspopup="listbox"
-                      aria-expanded={unitOpen}
-                      className="flex h-full min-w-[4.75rem] items-center justify-center gap-1 rounded-r-[1.75rem] border-l border-[var(--line)] px-2.5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg-soft)]"
+              <div
+                className={`relative flex rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)] ${
+                  unitOpen ? "z-40 overflow-visible" : "overflow-hidden"
+                }`}
+              >
+                <span className="sr-only">Amount / dose</span>
+                <FieldWatermark label="Dose" className="right-[5.25rem]" />
+                <input
+                  value={doseAmount}
+                  onChange={(e) => setDoseAmount(e.target.value)}
+                  placeholder="e.g. 5"
+                  inputMode="decimal"
+                  aria-label="Amount"
+                  className="relative z-10 min-w-0 flex-1 rounded-l-[1.75rem] bg-transparent px-3 py-2 outline-none"
+                />
+                <div ref={unitWrapRef} className="relative z-20 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setUnitOpen((o) => !o);
+                    }}
+                    aria-haspopup="listbox"
+                    aria-expanded={unitOpen}
+                    className="flex h-full min-w-[4.75rem] items-center justify-center gap-1 rounded-r-[1.75rem] border-l border-[var(--line)] px-2.5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg-soft)]"
+                  >
+                    {doseUnit}
+                    <span className="text-[10px] text-[var(--muted)]" aria-hidden>
+                      ▾
+                    </span>
+                  </button>
+                  {unitOpen && (
+                    <ul
+                      role="listbox"
+                      aria-label="Choose unit"
+                      className="arc-tabbar-glass absolute right-0 top-full z-50 mt-2 max-h-64 min-w-[10rem] overflow-auto rounded-[1.75rem] p-1.5 shadow-xl"
                     >
-                      {doseUnit}
-                      <span className="text-[10px] text-[var(--muted)]" aria-hidden>
-                        ▾
-                      </span>
-                    </button>
-                    {unitOpen && (
-                      <ul
-                        role="listbox"
-                        aria-label="Maßeinheit wählen"
-                        className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 max-h-64 min-w-[10rem] overflow-auto rounded-[1.75rem] p-1.5"
-                      >
-                        {DOSE_UNITS.map((unit) => {
-                          const active = unit === doseUnit;
-                          return (
-                            <li key={unit}>
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected={active}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => {
-                                  setDoseUnit(unit);
-                                  setUnitOpen(false);
-                                }}
-                                className={
-                                  active
-                                    ? "arc-tab-active arc-tab-glow w-full rounded-full px-3 py-2 text-left text-sm font-semibold text-white"
-                                    : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
-                                }
-                              >
-                                {unit}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
+                      {DOSE_UNITS.map((unit) => {
+                        const active = unit === doseUnit;
+                        return (
+                          <li key={unit}>
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={active}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setDoseUnit(unit);
+                                setUnitOpen(false);
+                              }}
+                              className={
+                                active
+                                  ? "arc-tab-active arc-tab-glow w-full rounded-full px-3 py-2 text-left text-sm font-semibold text-white"
+                                  : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
+                              }
+                            >
+                              {unit}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               </div>
-              <label className="grid gap-1 text-sm sm:col-span-1">
-                <span className="text-[var(--muted)]">Notiz</span>
+              <label className="relative block overflow-hidden rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] focus-within:border-[var(--accent)] sm:col-span-1">
+                <span className="sr-only">Note</span>
+                <FieldWatermark label="Notes" />
                 <input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="optional"
-                  className={inputClass}
+                  className="relative z-10 w-full bg-transparent px-3 py-2 pr-16 outline-none"
                 />
               </label>
             </div>
@@ -528,7 +518,7 @@ export default function SupplementsPage() {
                 disabled={busy || days.length === 0}
                 className="arc-chrome rounded-full px-8 py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50"
               >
-                Zum Plan hinzufügen
+                Add to plan
               </button>
             </div>
           </div>
@@ -571,7 +561,7 @@ export default function SupplementsPage() {
                           onClick={() => logSchedule(s)}
                           className="arc-chrome rounded-[1.75rem] px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
                         >
-                          {already ? "Geloggt" : "Loggen"}
+                          {already ? "Logged" : "Log"}
                         </button>
                       )}
                       <button
@@ -580,7 +570,7 @@ export default function SupplementsPage() {
                         onClick={() => deleteSchedule(s.id)}
                         className="text-xs text-[var(--muted)] hover:text-[var(--danger)] disabled:opacity-50"
                       >
-                        Entfernen
+                        Remove
                       </button>
                     </div>
                   </li>
@@ -596,7 +586,7 @@ export default function SupplementsPage() {
               onClick={logAllDueToday}
               className="w-full rounded-[1.75rem] border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--bg)] disabled:opacity-50"
             >
-              Heute fällig loggen ({dueToday.length})
+              Log all due today ({dueToday.length})
             </button>
           )}
         </section>
@@ -606,11 +596,11 @@ export default function SupplementsPage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Katalog</h2>
+          <h2 className="text-lg font-semibold">Catalog</h2>
           <div ref={filterWrapRef} className="relative">
             <button
               type="button"
-              aria-label="Katalog filtern"
+              aria-label="Filter catalog"
               aria-haspopup="listbox"
               aria-expanded={filterOpen}
               onClick={() => setFilterOpen((o) => !o)}
@@ -627,7 +617,7 @@ export default function SupplementsPage() {
             {filterOpen && (
               <ul
                 role="listbox"
-                aria-label="Kategorie filtern"
+                aria-label="Filter category"
                 className="arc-tabbar-glass absolute right-0 top-full z-40 mt-2 min-w-[11rem] overflow-auto rounded-[1.75rem] p-1.5"
               >
                 <li>
@@ -646,7 +636,7 @@ export default function SupplementsPage() {
                         : "w-full rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--text)]"
                     }
                   >
-                    Alle
+                    All
                   </button>
                 </li>
                 {catalogCategories.map((cat) => {
@@ -699,7 +689,7 @@ export default function SupplementsPage() {
                     {s.category}
                   </span>
                 </div>
-                <p className="text-xs text-[var(--accent-dim)]">Dosis: {s.dose}</p>
+                <p className="text-xs text-[var(--accent-dim)]">Dose: {s.dose}</p>
                 <p className="text-xs leading-relaxed text-[var(--muted)]">{s.effect}</p>
                 <p className="text-[11px] leading-relaxed text-[var(--muted)]/80">{s.nutrition}</p>
                 <button
@@ -708,7 +698,7 @@ export default function SupplementsPage() {
                   onClick={() => logCatalogEntry(s)}
                   className="mt-1 text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline disabled:opacity-50"
                 >
-                  Jetzt loggen
+                  Log now
                 </button>
               </div>
             </li>
@@ -720,7 +710,7 @@ export default function SupplementsPage() {
         <h2 className="text-lg font-semibold">Log</h2>
         <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
           {items.length === 0 && (
-            <li className="px-4 py-6 text-sm text-[var(--muted)]">Noch nichts geloggt.</li>
+            <li className="px-4 py-6 text-sm text-[var(--muted)]">Nothing logged yet.</li>
           )}
           {items.map((s) => {
             const cat = findCatalogByName(s.name);
@@ -737,7 +727,7 @@ export default function SupplementsPage() {
                     }
                     setSwipeOpenId(s.id);
                   }}
-                  actionLabel={confirming ? (deleting ? "…" : "Entfernen") : "Löschen"}
+                  actionLabel={confirming ? (deleting ? "..." : "Remove") : "Delete"}
                   onDelete={() => {
                     if (confirming) {
                       if (!deleting) removeLog(s.id);
@@ -748,7 +738,7 @@ export default function SupplementsPage() {
                   }}
                 >
                   {confirming ? (
-                    <p className="text-sm text-white/70">Eintrag wirklich entfernen?</p>
+                    <p className="text-sm text-white/70">Remove this entry?</p>
                   ) : (
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-3">

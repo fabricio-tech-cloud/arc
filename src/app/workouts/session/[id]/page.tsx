@@ -12,11 +12,14 @@ import {
   type MuscleGroupKey,
 } from "@/lib/muscles";
 import {
+  SLOT_DEFAULT_TIME,
   parsePlanExercises,
+  slotFromTime,
   type SessionPlanExercise,
+  type SessionSlot,
   type WeekMode,
 } from "@/lib/session-schedule";
-import { WEEKDAYS } from "@/lib/supplements";
+import { WeekdayToggle } from "@/components/WeekdayToggle";
 
 type EditExercise = {
   name: string;
@@ -51,6 +54,7 @@ export default function EditSessionPlanPage() {
   const [days, setDays] = useState<number[]>([]);
   const [weekMode, setWeekMode] = useState<WeekMode>("every");
   const [intervalWeeks, setIntervalWeeks] = useState(2);
+  const [slot, setSlot] = useState<SessionSlot>("morning");
   const [exercises, setExercises] = useState<EditExercise[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +71,7 @@ export default function EditSessionPlanPage() {
         setDays(Array.isArray(json.days) ? json.days.map(Number) : []);
         setWeekMode((json.week_mode as WeekMode) || "every");
         setIntervalWeeks(json.interval_weeks ?? 2);
+        setSlot(slotFromTime(json.time_of_day));
         setExercises(fromPlanExercises(parsePlanExercises(json.exercises)));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed"))
@@ -137,7 +142,7 @@ export default function EditSessionPlanPage() {
     e.preventDefault();
     if (exercises.length === 0 || busy) return;
     if (days.length === 0) {
-      setError("Mindestens einen Wochentag wählen");
+      setError("Pick at least one weekday");
       return;
     }
     setBusy(true);
@@ -152,6 +157,7 @@ export default function EditSessionPlanPage() {
           days,
           week_mode: weekMode,
           interval_weeks: weekMode === "interval" ? intervalWeeks : null,
+          time_of_day: SLOT_DEFAULT_TIME[slot],
           exercises: exercises.map((item) => ({
             name: item.name,
             muscle_group: item.muscleGroup,
@@ -170,7 +176,7 @@ export default function EditSessionPlanPage() {
   }
 
   async function onDelete() {
-    if (!confirm("Session wirklich löschen?")) return;
+    if (!confirm("Delete this session?")) return;
     setBusy(true);
     setError(null);
     try {
@@ -195,7 +201,7 @@ export default function EditSessionPlanPage() {
         <SwipeBack href="/workouts" />
         <p className="text-[var(--danger)]">{error}</p>
         <Link href="/workouts" className="text-sm text-[var(--accent)]">
-          ← Zurück
+          {"<- Back"}
         </Link>
       </div>
     );
@@ -212,7 +218,7 @@ export default function EditSessionPlanPage() {
           Session bearbeiten
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {exercises.length} {exercises.length === 1 ? "Übung" : "Übungen"}
+          {exercises.length} {exercises.length === 1 ? "exercise" : "exercises"}
         </p>
       </div>
 
@@ -228,38 +234,52 @@ export default function EditSessionPlanPage() {
         </label>
 
         <div>
-          <p className="mb-2 text-sm text-[var(--muted)]">Wochentage</p>
-          <div className="grid grid-cols-7 gap-1.5">
-            {WEEKDAYS.map((d) => {
-              const on = days.includes(d.value);
-              return (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => toggleDay(d.value)}
-                  aria-pressed={on}
-                  className={`rounded-[1.25rem] py-2 text-center text-sm font-medium transition ${
-                    on
-                      ? "arc-chrome"
-                      : "border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]"
+          <p className="mb-2 text-sm text-[var(--muted)]">Weekdays</p>
+          <WeekdayToggle days={days} onToggle={toggleDay} />
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm text-[var(--muted)]">Time of day</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ["morning", "Morning", SLOT_DEFAULT_TIME.morning],
+                ["noon", "Noon", SLOT_DEFAULT_TIME.noon],
+              ] as const
+            ).map(([value, label, time]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSlot(value)}
+                aria-pressed={slot === value}
+                className={`rounded-[1.25rem] px-3 py-2.5 text-left transition ${
+                  slot === value
+                    ? "arc-chrome font-semibold"
+                    : "border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                <span className="block text-sm">{label}</span>
+                <span
+                  className={`mt-0.5 block text-[11px] tabular-nums ${
+                    slot === value ? "opacity-80" : "text-[var(--muted)]"
                   }`}
                 >
-                  {d.label}
-                </button>
-              );
-            })}
+                  {time}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
         <div>
-          <p className="mb-2 text-sm text-[var(--muted)]">Rhythmus</p>
+          <p className="mb-2 text-sm text-[var(--muted)]">Schedule</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(
               [
-                ["every", "Jede Woche"],
-                ["A", "A-Woche"],
-                ["B", "B-Woche"],
-                ["interval", "Intervall"],
+                ["every", "Every week"],
+                ["A", "Week A"],
+                ["B", "Week B"],
+                ["interval", "Interval"],
               ] as const
             ).map(([mode, label]) => (
               <button
@@ -279,7 +299,7 @@ export default function EditSessionPlanPage() {
           </div>
           {weekMode === "interval" && (
             <label className="mt-3 block text-sm">
-              <span className="mb-1 block text-[var(--muted)]">Alle N Wochen</span>
+              <span className="mb-1 block text-[var(--muted)]">Every N weeks</span>
               <input
                 type="number"
                 min={2}
@@ -293,7 +313,7 @@ export default function EditSessionPlanPage() {
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block text-[var(--muted)]">Notiz</span>
+          <span className="mb-1 block text-[var(--muted)]">Note</span>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -318,7 +338,7 @@ export default function EditSessionPlanPage() {
                 onClick={() => removeExercise(item.name)}
                 className="shrink-0 text-sm text-[var(--muted)] hover:text-[var(--danger)]"
               >
-                Entfernen
+                Remove
               </button>
             </div>
 
@@ -335,7 +355,7 @@ export default function EditSessionPlanPage() {
                     <button
                       type="button"
                       onClick={() => toggleFailure(item.name, i)}
-                      aria-label={s.failure ? "Auf Reps wechseln" : "Auf Failure wechseln"}
+                      aria-label={s.failure ? "Switch to reps" : "Switch to failure"}
                       aria-pressed={s.failure}
                       className={`shrink-0 px-1.5 text-[10px] font-semibold tracking-wide transition ${
                         s.failure
@@ -390,7 +410,7 @@ export default function EditSessionPlanPage() {
                   <button
                     type="button"
                     onClick={() => removeSetRow(item.name, i)}
-                    aria-label={`Set ${i + 1} entfernen`}
+                    aria-label={`Remove set ${i + 1}`}
                     className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--danger)]"
                   >
                     ×
@@ -416,7 +436,7 @@ export default function EditSessionPlanPage() {
           disabled={busy || days.length === 0 || exercises.length === 0}
           className="rounded-[1.75rem] border border-[var(--accent)]/35 bg-emerald-500/15 px-5 py-2.5 font-semibold text-[var(--accent)] transition hover:bg-emerald-500/25 hover:text-white disabled:opacity-60"
         >
-          {busy ? "Speichern…" : "Speichern"}
+          {busy ? "Saving..." : "Save"}
         </button>
         <button
           type="button"
@@ -424,7 +444,7 @@ export default function EditSessionPlanPage() {
           disabled={busy}
           className="rounded-[1.75rem] border border-[var(--accent)]/35 bg-red-500/12 px-4 py-2.5 text-sm text-[var(--accent)] transition hover:bg-red-500/20 hover:text-white disabled:opacity-60"
         >
-          Löschen
+          Delete
         </button>
       </div>
     </form>

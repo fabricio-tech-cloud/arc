@@ -15,7 +15,7 @@ export function SessionCartFab() {
     <Link
       href="/workouts/session"
       className="arc-tabbar-glass fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-[var(--accent)] shadow-lg transition hover:bg-white/10 sm:right-6"
-      aria-label={`Session mit ${count} Übungen öffnen`}
+      aria-label={`Open session with ${count} exercises`}
     >
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7">
         <path

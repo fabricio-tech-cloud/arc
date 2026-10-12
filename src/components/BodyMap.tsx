@@ -19,22 +19,45 @@ type Props = {
   focusIds?: string[];
 };
 
+/** Mobile (black shell): light silhouette so the figure stays visible */
+const MOBILE_INTENSITY: Record<number, string> = {
+  0: "#c8ced6",
+  1: "#e8e4f4",
+  2: "#d4c8fc",
+  3: "#c0abf5",
+  4: "#a78bfa",
+  5: "#9270ef",
+  6: "#7c5cbf",
+  7: "#6b47b0",
+  8: "#5a359a",
+  9: "#4c2a82",
+  10: "#3b1f66",
+};
+
+/** Desktop: idle white → dark lilac by training intensity */
+const DESKTOP_INTENSITY: Record<number, string> = {
+  0: "#ffffff",
+  1: "#f3f0ff",
+  2: "#e8e4f4",
+  3: "#d4c8fc",
+  4: "#c0abf5",
+  5: "#a78bfa",
+  6: "#9270ef",
+  7: "#7c5cbf",
+  8: "#6b47b0",
+  9: "#4c2a82",
+  10: "#2e184d",
+};
+
+function intensitySpectrumForViewport() {
+  if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+    return DESKTOP_INTENSITY;
+  }
+  return MOBILE_INTENSITY;
+}
+
 async function ensureArcIntensityColors(mod: typeof import("body-muscles")) {
-  // White → lilac intensity spectrum (no yellow/orange/red)
-  const spectrum: Record<number, string> = {
-    0: "#6b7280",
-    1: "#f5f3ff",
-    2: "#e9e2ff",
-    3: "#d4c8fc",
-    4: "#c0abf5",
-    5: "#a78bfa",
-    6: "#9270ef",
-    7: "#7c5cbf",
-    8: "#6b47b0",
-    9: "#5a359a",
-    10: "#4c2a82",
-  };
-  Object.assign(mod.INTENSITY_COLORS, spectrum);
+  Object.assign(mod.INTENSITY_COLORS, intensitySpectrumForViewport());
 }
 
 async function applyFocusZoom(host: HTMLElement, focusIds: string[], view: View) {
@@ -166,6 +189,24 @@ export function BodyMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Swap intensity palette when crossing compact ↔ extended
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => {
+      void import("body-muscles").then(async (mod) => {
+        await ensureArcIntensityColors(mod);
+        if (!chartRef.current) return;
+        chartRef.current.update({
+          view: view === "BACK" ? mod.ViewSide.BACK : mod.ViewSide.FRONT,
+          bodyState,
+        });
+      });
+    };
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, [view, bodyState]);
+
   useEffect(() => {
     if (!ready || !chartRef.current) return;
     const next = { ...bodyState };
@@ -193,8 +234,8 @@ export function BodyMap({
     <div className={`flex h-full flex-col ${className}`}>
       {showToggle && (
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)] uppercase">
-            Diese Woche
+          <p className="text-xs font-medium tracking-[0.16em] text-[var(--muted)] uppercase lg:text-white">
+            This week
           </p>
           <div className="arc-tabbar-glass relative grid grid-cols-2 rounded-full p-0.5">
             <span
@@ -207,7 +248,9 @@ export function BodyMap({
               type="button"
               onClick={() => setView("FRONT")}
               className={`relative z-10 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
-                view === "FRONT" ? "text-white arc-tab-glow" : "text-[var(--muted)] hover:text-[var(--text)]"
+                view === "FRONT"
+                  ? "text-white arc-tab-glow"
+                  : "text-[var(--muted)] hover:text-[var(--text)] lg:text-white/55 lg:hover:text-white"
               }`}
             >
               Front
@@ -216,7 +259,9 @@ export function BodyMap({
               type="button"
               onClick={() => setView("BACK")}
               className={`relative z-10 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-300 ${
-                view === "BACK" ? "text-white arc-tab-glow" : "text-[var(--muted)] hover:text-[var(--text)]"
+                view === "BACK"
+                  ? "text-white arc-tab-glow"
+                  : "text-[var(--muted)] hover:text-[var(--text)] lg:text-white/55 lg:hover:text-white"
               }`}
             >
               Back
@@ -229,21 +274,21 @@ export function BodyMap({
         ref={hostRef}
         className={
           size === "lg"
-            ? "min-h-[360px] flex-1"
+            ? "mx-auto min-h-[320px] w-full max-w-sm"
             : "pointer-events-none flex min-h-[132px] items-center justify-center overflow-hidden rounded-[1.75rem]"
         }
       />
 
       {showHint && (
-        <p className="mt-3 min-h-[1.25rem] text-center text-sm text-[var(--muted)]">
+        <p className="mt-3 min-h-[1.25rem] text-center text-sm text-[var(--muted)] lg:text-white/80">
           {active ? (
             <>
-              <span className="text-[var(--accent)]">{active.name}</span>
-              <span className="mx-1.5 text-[var(--line)]">·</span>
-              <span className="font-mono text-xs">{active.id}</span>
+              <span className="text-[var(--accent)] lg:text-white">{active.name}</span>
+              <span className="mx-1.5 text-[var(--line)] lg:text-white/35">·</span>
+              <span className="font-mono text-xs lg:text-white/70">{active.id}</span>
             </>
           ) : (
-            "Muskel antippen → Training dieser Woche"
+            "Tap a muscle to see this week's training"
           )}
         </p>
       )}

@@ -36,14 +36,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={`${syne.variable} ${manrope.variable} ${roba.variable}`}>
+    <html lang="en" className={`${syne.variable} ${manrope.variable} ${roba.variable}`}>
       <body>
-        <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-24 pt-6 sm:px-6">
-          <AppProviders>
-            <AppNav />
-            <main className="mt-6">{children}</main>
-          </AppProviders>
-        </div>
+        <AppProviders>
+          <AppNav>{children}</AppNav>
+        </AppProviders>
       </body>
     </html>
   );

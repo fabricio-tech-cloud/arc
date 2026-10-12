@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     if (!exercises.length) {
       return NextResponse.json(
-        { error: "Keine geplante Session für heute" },
+        { error: "No planned session for today" },
         { status: 400 },
       );
     }

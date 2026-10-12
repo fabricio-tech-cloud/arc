@@ -18,12 +18,12 @@ export const TRAINING_GROUPS: MuscleGroupKey[] = [
 ];
 
 export const GROUP_LABELS: Record<MuscleGroupKey, string> = {
-  Chest: "Brust",
-  Shoulders: "Schultern",
-  Arms: "Arme",
-  Back: "Rücken",
-  Abdominals: "Bauch",
-  Legs: "Beine",
+  Chest: "Chest",
+  Shoulders: "Shoulders",
+  Arms: "Arms",
+  Back: "Back",
+  Abdominals: "Abs",
+  Legs: "Legs",
 };
 
 export const GROUP_SLUGS: Record<MuscleGroupKey, string> = {
@@ -50,12 +50,12 @@ export function parseGroupParam(raw: string | null | undefined): MuscleGroupKey 
 
 /** Short tags for week strip / today preview */
 export const GROUP_ABBR: Record<MuscleGroupKey, string> = {
-  Chest: "Br",
-  Shoulders: "Sch",
+  Chest: "Ch",
+  Shoulders: "Sh",
   Arms: "Ar",
-  Back: "Rü",
-  Abdominals: "Ba",
-  Legs: "Be",
+  Back: "Bk",
+  Abdominals: "Ab",
+  Legs: "Lg",
 };
 
 export const GROUP_VIEW: Record<MuscleGroupKey, "FRONT" | "BACK"> = {
@@ -279,12 +279,12 @@ export const EQUIPMENT_TYPES: Equipment[] = [
 ];
 
 export const EQUIPMENT_LABELS: Record<Equipment, string> = {
-  Barbell: "Langhantel",
-  Dumbbell: "Kurzhantel",
-  Machine: "Maschinen",
-  Cable: "Kabel",
-  Bodyweight: "Körpergewicht",
-  Other: "Sonstiges",
+  Barbell: "Barbell",
+  Dumbbell: "Dumbbell",
+  Machine: "Machine",
+  Cable: "Cable",
+  Bodyweight: "Bodyweight",
+  Other: "Other",
 };
 
 /** Anatomical / activation region within a muscle group (Chest uses these). */
@@ -293,16 +293,16 @@ export type ExerciseRegion = "Upper" | "Mid" | "Lower" | "Full";
 export const EXERCISE_REGIONS: ExerciseRegion[] = ["Upper", "Mid", "Lower", "Full"];
 
 export const REGION_LABELS: Record<ExerciseRegion, string> = {
-  Upper: "Obere Brust",
-  Mid: "Mittlere Brust",
-  Lower: "Untere Brust",
-  Full: "Ganze Brust",
+  Upper: "Upper chest",
+  Mid: "Mid chest",
+  Lower: "Lower chest",
+  Full: "Full chest",
 };
 
 export const FOCUS_LABELS: Record<TrainingFocus, string> = {
-  Hypertrophy: "Hypertrophie",
-  Strength: "Kraft",
-  Explosiveness: "Explosivität",
+  Hypertrophy: "Hypertrophy",
+  Strength: "Strength",
+  Explosiveness: "Explosiveness",
 };
 
 export type CatalogEntry = {

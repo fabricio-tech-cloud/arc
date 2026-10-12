@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BodyState, MuscleId } from "body-muscles";
 import { BodyMap } from "@/components/BodyMap";
+import { SessionSlotPlanner } from "@/components/SessionSlotPlanner";
 import { SwipeDeleteRow } from "@/components/SwipeDeleteRow";
 import {
   GROUP_LABELS,
@@ -53,13 +54,13 @@ type WeekPayload = {
 };
 
 const WEEK_MODE_LABEL: Record<WeekMode, string> = {
-  every: "jede Woche",
-  A: "Woche A",
-  B: "Woche B",
-  interval: "Intervall",
+  every: "every week",
+  A: "week A",
+  B: "week B",
+  interval: "interval",
 };
 
-const DAY_LABELS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function weekdayLabel(dateStr: string) {
   const d = new Date(dateStr + "T12:00:00");
@@ -73,7 +74,7 @@ function formatShortDate(dateStr: string) {
 
 function weekModeLabel(plan: SessionPlanRow) {
   if (plan.week_mode === "interval" && plan.interval_weeks) {
-    return `alle ${plan.interval_weeks} Wochen`;
+    return `every ${plan.interval_weeks} weeks`;
   }
   return WEEK_MODE_LABEL[plan.week_mode] ?? plan.week_mode;
 }
@@ -82,10 +83,6 @@ export default function WorkoutsPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<SessionPlanRow[]>([]);
   const [week, setWeek] = useState<WeekPayload | null>(null);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [name, setName] = useState("");
-  const [notes, setNotes] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -160,28 +157,6 @@ export default function WorkoutsPage() {
       .map(([d, items]) => ({ date: d, items }));
   }, [selectedPayload]);
 
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/workouts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, name: name.trim() || null, notes: notes || null }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed");
-      setName("");
-      setNotes("");
-      router.push(`/workouts/${json.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function removePlan(id: string) {
     setDeleting(true);
     setError(null);
@@ -206,16 +181,21 @@ export default function WorkoutsPage() {
   }
 
   return (
-    <div className="animate-rise space-y-8">
-      <section className="p-0 sm:p-0">
+    <div className="animate-rise mx-auto max-w-5xl space-y-8">
+      {/* Body map alone under logo — no card, only the figure */}
+      <section className="mx-auto w-full max-w-md lg:mt-4">
         <BodyMap bodyState={mapState} size="lg" showHint onMuscleClick={onMuscleClick} />
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
-          <span>Intensität Mo–So · ausgeführte Sets (+ Volumen)</span>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-[var(--muted)] lg:hidden">
+          <span>Intensity Mon-Sun · completed sets (+ volume)</span>
           <span className="h-2 w-16 rounded-full bg-gradient-to-r from-[#f5f3ff] via-[#a78bfa] to-[#4c2a82]" />
+        </div>
+        <div className="mt-3 hidden flex-wrap items-center justify-center gap-3 text-xs text-white/80 lg:flex">
+          <span>Intensity Mon–Sun · white → dark lilac</span>
+          <span className="h-2 w-16 rounded-full bg-gradient-to-r from-white via-[#a78bfa] to-[#2e184d]" />
         </div>
 
         {selectedPayload && (
-          <div className="mt-4 space-y-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
+          <div className="mt-4 space-y-3 rounded-[1.35rem] border border-white/[0.06] bg-black/50 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p
@@ -225,11 +205,11 @@ export default function WorkoutsPage() {
                   {selectedPayload.label}
                 </p>
                 <p className="mt-0.5 text-sm tabular-nums text-[var(--muted)]">
-                  Intensität {selectedPayload.intensity}/10
+                  Intensity {selectedPayload.intensity}/10
                   {" · "}
                   {selectedPayload.setCount} Sets
                   {selectedPayload.volume > 0
-                    ? ` · ${selectedPayload.volume.toLocaleString("de-DE")} kg`
+                    ? ` · ${selectedPayload.volume.toLocaleString("en-US")} kg`
                     : ""}
                 </p>
               </div>
@@ -238,13 +218,13 @@ export default function WorkoutsPage() {
                 onClick={() => setSelectedGroup(null)}
                 className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
               >
-                Schließen
+                Close
               </button>
             </div>
 
             {exercisesByDay.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
-                Diese Woche noch keine ausgeführten Einheiten für {selectedPayload.label}.
+                No completed sessions for {selectedPayload.label} this week yet.
               </p>
             ) : (
               <ul className="space-y-3">
@@ -257,7 +237,7 @@ export default function WorkoutsPage() {
                       {items.map((ex) => (
                         <li
                           key={ex.id}
-                          className="flex items-center justify-between gap-3 rounded-[1.25rem] bg-[var(--bg)] px-3 py-2"
+                          className="flex items-center justify-between gap-3 rounded-[1.25rem] bg-black/40 px-3 py-2"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm text-[var(--text)]">{ex.name}</p>
@@ -267,7 +247,7 @@ export default function WorkoutsPage() {
                           </div>
                           <span className="shrink-0 text-xs tabular-nums text-[var(--accent)]">
                             {ex.set_count} Sets
-                            {ex.volume > 0 ? ` · ${ex.volume.toLocaleString("de-DE")} kg` : ""}
+                            {ex.volume > 0 ? ` · ${ex.volume.toLocaleString("en-US")} kg` : ""}
                           </span>
                         </li>
                       ))}
@@ -281,7 +261,7 @@ export default function WorkoutsPage() {
               href={groupPath(selectedPayload.key)}
               className="inline-block text-sm text-[var(--accent)] hover:text-white"
             >
-              Übungen planen →
+              {"Plan exercises ->"}
             </Link>
           </div>
         )}
@@ -292,7 +272,7 @@ export default function WorkoutsPage() {
           className="mb-3 text-center text-xl font-normal"
           style={{ fontFamily: '"Times New Roman", Times, serif' }}
         >
-          Muskelgruppen
+          Muscle groups
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {groupCards.map((g) => {
@@ -300,12 +280,12 @@ export default function WorkoutsPage() {
             return (
               <div
                 key={g.key}
-                className="relative rounded-[1.75rem] bg-[var(--bg-elevated)] p-3 text-center transition hover:bg-[var(--bg-soft)]"
+                className="relative rounded-[1.75rem] bg-[var(--bg-elevated)] p-3 text-center transition hover:bg-[var(--bg-soft)] lg:border lg:border-white/10 lg:bg-black/50 lg:hover:bg-black/60"
               >
                 <Link
                   href={groupPath(g.key)}
                   className="absolute inset-0 z-10 rounded-[1.75rem]"
-                  aria-label={`${g.label} — Übungen`}
+                  aria-label={`${g.label} exercises`}
                 />
                 <p
                   className="mb-2 text-base font-normal text-[var(--text)]"
@@ -327,56 +307,12 @@ export default function WorkoutsPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">Sessions</h2>
-        <form
-          onSubmit={onCreate}
-          className="grid gap-3 rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 sm:grid-cols-[1fr_1.4fr_1.4fr_auto]"
-        >
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--muted)]">Datum</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
-              required
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--muted)]">Name</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Push A…"
-              className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--muted)]">Notiz</span>
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Gute Energie…"
-              className="w-full rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
-            />
-          </label>
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={busy}
-              className="arc-chrome w-full rounded-[1.75rem] px-4 py-2 font-semibold disabled:opacity-60 sm:w-auto"
-            >
-              {busy ? "…" : "Anlegen"}
-            </button>
-          </div>
-        </form>
-
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
-        <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
+        <ul className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] lg:border lg:border-white/10 lg:bg-black/50">
           {plans.length === 0 && (
             <li className="px-4 py-6 text-[var(--muted)]">
-              Noch keine Sessions — über Muskelgruppen Übungen sammeln und speichern.
+              No sessions yet - collect exercises from muscle groups and save.
             </li>
           )}
           {plans.map((plan) => {
@@ -394,7 +330,7 @@ export default function WorkoutsPage() {
                     }
                     setSwipeOpenId(plan.id);
                   }}
-                  actionLabel={confirming ? (deleting ? "…" : "Entfernen") : "Löschen"}
+                  actionLabel={confirming ? (deleting ? "..." : "Remove") : "Delete"}
                   onDelete={() => {
                     if (confirming) {
                       if (!deleting) removePlan(plan.id);
@@ -410,7 +346,7 @@ export default function WorkoutsPage() {
                   }
                 >
                   {confirming ? (
-                    <p className="text-sm text-white/70">Session wirklich entfernen?</p>
+                    <p className="text-sm text-white/70">Remove this session?</p>
                   ) : (
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0">
@@ -423,7 +359,7 @@ export default function WorkoutsPage() {
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full bg-[var(--bg-soft)] px-2.5 py-1 text-xs text-[var(--accent)]">
-                        {plan.exercises.length} Übungen
+                        {plan.exercises.length} exercises
                       </span>
                     </div>
                   )}
@@ -432,6 +368,8 @@ export default function WorkoutsPage() {
             );
           })}
         </ul>
+
+        <SessionSlotPlanner onSaved={load} />
       </section>
     </div>
   );

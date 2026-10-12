@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import {
+  normalizePlanTime,
   parsePlanExercises,
   type WeekMode,
 } from "@/lib/session-schedule";
@@ -19,14 +20,16 @@ export async function GET() {
         week_mode,
         interval_weeks,
         anchor_date::text AS anchor_date,
+        to_char(time_of_day, 'HH24:MI') AS time_of_day,
         exercises,
         created_at
       FROM session_plans
-      ORDER BY created_at DESC
+      ORDER BY time_of_day ASC, created_at DESC
     `;
     return NextResponse.json(
       rows.map((row) => ({
         ...row,
+        time_of_day: normalizePlanTime(row.time_of_day),
         exercises: parsePlanExercises(row.exercises),
       })),
     );
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     if (!Array.isArray(body.days) || body.days.length === 0) {
-      return NextResponse.json({ error: "Mindestens ein Wochentag nötig" }, { status: 400 });
+      return NextResponse.json({ error: "At least one weekday is required" }, { status: 400 });
     }
 
     const days = body.days
@@ -66,17 +69,18 @@ export async function POST(request: Request) {
 
     const exercises = Array.isArray(body.exercises) ? body.exercises : [];
     if (exercises.length === 0) {
-      return NextResponse.json({ error: "Mindestens eine Übung nötig" }, { status: 400 });
+      return NextResponse.json({ error: "At least one exercise is required" }, { status: 400 });
     }
 
     const name =
       body.name == null || body.name === "" ? null : String(body.name).trim() || null;
     const notes =
       body.notes == null || body.notes === "" ? null : String(body.notes).trim() || null;
+    const timeOfDay = normalizePlanTime(body.time_of_day);
 
     const db = sql();
     const [row] = await db`
-      INSERT INTO session_plans (name, notes, days, week_mode, interval_weeks, anchor_date, exercises)
+      INSERT INTO session_plans (name, notes, days, week_mode, interval_weeks, anchor_date, time_of_day, exercises)
       VALUES (
         ${name},
         ${notes},
@@ -84,6 +88,7 @@ export async function POST(request: Request) {
         ${weekMode},
         ${intervalWeeks},
         ${anchorDate}::date,
+        ${timeOfDay}::time,
         ${JSON.stringify(exercises)}::jsonb
       )
       RETURNING
@@ -94,12 +99,17 @@ export async function POST(request: Request) {
         week_mode,
         interval_weeks,
         anchor_date::text AS anchor_date,
+        to_char(time_of_day, 'HH24:MI') AS time_of_day,
         exercises,
         created_at
     `;
 
     return NextResponse.json(
-      { ...row, exercises: parsePlanExercises(row.exercises) },
+      {
+        ...row,
+        time_of_day: normalizePlanTime(row.time_of_day),
+        exercises: parsePlanExercises(row.exercises),
+      },
       { status: 201 },
     );
   } catch (error) {

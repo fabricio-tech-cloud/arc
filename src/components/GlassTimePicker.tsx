@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { FieldWatermark } from "@/components/FieldWatermark";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -20,9 +21,17 @@ type GlassTimePickerProps = {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  watermark?: string;
+  "aria-label"?: string;
 };
 
-export function GlassTimePicker({ value, onChange, className = "" }: GlassTimePickerProps) {
+export function GlassTimePicker({
+  value,
+  onChange,
+  className = "",
+  watermark,
+  "aria-label": ariaLabel = "Uhrzeit",
+}: GlassTimePickerProps) {
   const { h, m } = parseTime(value);
   const minuteSnapped = (Math.round(m / 5) * 5) % 60;
   const [open, setOpen] = useState(false);
@@ -60,14 +69,16 @@ export function GlassTimePicker({ value, onChange, className = "" }: GlassTimePi
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-left outline-none focus:border-[var(--accent)]"
+        className="relative flex w-full items-center justify-between overflow-hidden rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-left outline-none focus:border-[var(--accent)]"
       >
-        <span className="tabular-nums tracking-wide">{display}</span>
+        {watermark ? <FieldWatermark label={watermark} className="right-10" /> : null}
+        <span className="relative z-10 tabular-nums tracking-wide">{display}</span>
         <svg
           viewBox="0 0 24 24"
-          className="h-4 w-4 text-[var(--muted)]"
+          className="relative z-10 h-4 w-4 text-[var(--muted)]"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.7"
@@ -81,7 +92,7 @@ export function GlassTimePicker({ value, onChange, className = "" }: GlassTimePi
       {open && (
         <div
           role="dialog"
-          aria-label="Uhrzeit wählen"
+          aria-label="Choose time"
           className="arc-tabbar-glass absolute left-0 top-full z-30 mt-2 w-full min-w-[14rem] rounded-[1.75rem] p-3"
         >
           <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-1">

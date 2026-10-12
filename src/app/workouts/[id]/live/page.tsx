@@ -108,7 +108,7 @@ export default function LiveSessionPage() {
     });
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
-      setError(json.error || "Set konnte nicht aktualisiert werden");
+      setError(json.error || "Could not update set");
       load();
       return false;
     }
@@ -165,7 +165,7 @@ export default function LiveSessionPage() {
   }
 
   if (!workout && !error) {
-    return <p className="text-[var(--muted)]">Laden…</p>;
+    return <p className="text-[var(--muted)]">Loading...</p>;
   }
 
   if (!workout) {
@@ -188,7 +188,7 @@ export default function LiveSessionPage() {
         <p className="mt-1 text-sm tabular-nums text-[var(--muted)]">
           {progress.done}/{progress.total} Sets · {pct}%
           {progress.volume > 0
-            ? ` · ${progress.volume.toLocaleString("de-DE")} kg Volumen`
+            ? ` · ${progress.volume.toLocaleString("en-US")} kg volume`
             : ""}
         </p>
       </div>
@@ -197,12 +197,12 @@ export default function LiveSessionPage() {
 
       {workout.completed ? (
         <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] px-4 py-6 text-center">
-          <p className="text-[var(--text)]">Session bereits abgeschlossen.</p>
+          <p className="text-[var(--text)]">Session already completed.</p>
           <p className="mt-1 text-sm tabular-nums text-[var(--muted)]">
-            {progress.volume.toLocaleString("de-DE")} kg Volumen
+            {progress.volume.toLocaleString("en-US")} kg volume
           </p>
           <Link href="/" className="mt-3 inline-block text-sm text-[var(--accent)]">
-            Zur Overview →
+            {"Back to overview ->"}
           </Link>
         </div>
       ) : (
@@ -239,7 +239,7 @@ export default function LiveSessionPage() {
                         <button
                           type="button"
                           onClick={() => void toggleSet(s.id, !s.done)}
-                          aria-label={s.done ? `Set ${i + 1} zurücksetzen` : `Set ${i + 1} erledigt`}
+                          aria-label={s.done ? `Reset set ${i + 1}` : `Mark set ${i + 1} done`}
                           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs ${
                             s.done
                               ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200"
@@ -291,7 +291,7 @@ export default function LiveSessionPage() {
               disabled={finishing}
               className="rounded-[1.75rem] border border-[var(--accent)]/35 bg-emerald-500/15 px-6 py-2.5 font-semibold text-[var(--accent)] transition hover:bg-emerald-500/25 hover:text-white disabled:opacity-60"
             >
-              {finishing ? "Speichern…" : "Session beenden"}
+              {finishing ? "Saving..." : "Finish session"}
             </button>
           </div>
         </>

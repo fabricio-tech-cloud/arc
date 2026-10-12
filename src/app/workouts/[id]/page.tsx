@@ -125,7 +125,7 @@ export default function WorkoutDetailPage() {
   }
 
   async function removeWorkout() {
-    if (!confirm("Workout löschen?")) return;
+    if (!confirm("Delete this workout?")) return;
     await fetch(`/api/workouts/${id}`, { method: "DELETE" });
     router.push("/workouts");
   }
@@ -154,8 +154,8 @@ export default function WorkoutDetailPage() {
                 e.currentTarget.blur();
               }
             }}
-            placeholder="Workout-Name"
-            aria-label="Workout-Name"
+            placeholder="Workout name"
+            aria-label="Workout name"
             disabled={savingTitle}
             className="mt-2 block w-full border-0 bg-transparent p-0 font-[family-name:var(--font-display)] text-3xl font-bold text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:ring-0"
           />
@@ -169,7 +169,7 @@ export default function WorkoutDetailPage() {
           onClick={removeWorkout}
           className="rounded-[1.75rem] border border-[var(--danger)]/40 px-3 py-1.5 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/10"
         >
-          Löschen
+          Delete
         </button>
       </div>
 
@@ -182,7 +182,7 @@ export default function WorkoutDetailPage() {
         <input
           value={exName}
           onChange={(e) => setExName(e.target.value)}
-          placeholder="Übung (z.B. Bankdrücken)"
+          placeholder="Exercise (e.g. bench press)"
           required
           className="rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg)] px-3 py-2 outline-none focus:border-[var(--accent)]"
         />
@@ -198,13 +198,13 @@ export default function WorkoutDetailPage() {
           ))}
         </select>
         <button type="submit" className="arc-chrome rounded-[1.75rem] px-4 py-2 font-semibold">
-          + Übung
+          + Exercise
         </button>
       </form>
 
       <div className="space-y-4">
         {workout.exercises.length === 0 && (
-          <p className="text-[var(--muted)]">Noch keine Übungen in diesem Workout.</p>
+          <p className="text-[var(--muted)]">No exercises in this workout yet.</p>
         )}
         {workout.exercises.map((ex) => {
           const draft = setDraft[ex.id] || { reps: "", weight: "", rir: "" };
@@ -240,7 +240,7 @@ export default function WorkoutDetailPage() {
                     <button
                       type="button"
                       onClick={() => removeSet(s.id)}
-                      aria-label={`Set ${i + 1} entfernen`}
+                      aria-label={`Remove set ${i + 1}`}
                       className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[var(--muted)] transition hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                     >
                       ×

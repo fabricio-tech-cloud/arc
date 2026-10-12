@@ -13,6 +13,8 @@ export type SessionPlanExercise = {
   }[];
 };
 
+export type SessionSlot = "morning" | "noon";
+
 export type SessionPlanRow = {
   id: string;
   name: string | null;
@@ -21,8 +23,34 @@ export type SessionPlanRow = {
   week_mode: WeekMode;
   interval_weeks: number | null;
   anchor_date: string;
+  /** HH:MM — hour < 12 = morning, else noon */
+  time_of_day: string;
   exercises: SessionPlanExercise[];
 };
+
+export const SLOT_DEFAULT_TIME: Record<SessionSlot, string> = {
+  morning: "09:00",
+  noon: "13:00",
+};
+
+export function normalizePlanTime(raw: unknown): string {
+  if (typeof raw !== "string") return SLOT_DEFAULT_TIME.morning;
+  const m = raw.trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return SLOT_DEFAULT_TIME.morning;
+  const h = Math.min(23, Math.max(0, Number(m[1])));
+  const min = Math.min(59, Math.max(0, Number(m[2])));
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+export function slotFromTime(time: string | null | undefined): SessionSlot {
+  const t = normalizePlanTime(time ?? "");
+  const hour = Number(t.slice(0, 2));
+  return hour < 12 ? "morning" : "noon";
+}
+
+export function slotLabel(slot: SessionSlot) {
+  return slot === "morning" ? "Morning session" : "Noon session";
+}
 
 export function startOfWeekMonday(d: Date) {
   const day = d.getDay();

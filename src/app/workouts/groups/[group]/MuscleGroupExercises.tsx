@@ -45,11 +45,11 @@ const FOCUS_OPTIONS: FocusOption[] = ["all", ...TRAINING_FOCUSES];
 const EQUIPMENT_OPTIONS: EquipmentOption[] = ["all", ...EQUIPMENT_TYPES];
 
 function focusLabel(opt: FocusOption) {
-  return opt === "all" ? "Alle Ziele" : FOCUS_LABELS[opt];
+  return opt === "all" ? "All goals" : FOCUS_LABELS[opt];
 }
 
 function equipmentLabel(opt: EquipmentOption) {
-  return opt === "all" ? "Alle Geräte" : EQUIPMENT_LABELS[opt];
+  return opt === "all" ? "All equipment" : EQUIPMENT_LABELS[opt];
 }
 
 export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGroupKey }) {
@@ -163,7 +163,7 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
             </h1>
             <p className="mt-1 text-sm text-[var(--muted)]">
               {data
-                ? `${filtered.length} ${filtered.length === 1 ? "Übung" : "Übungen"}`
+                ? `${filtered.length} ${filtered.length === 1 ? "exercise" : "exercises"}`
                 : "Loading…"}
               {cart.count > 0 ? ` · ${cart.count} in Session` : null}
             </p>
@@ -199,7 +199,7 @@ export default function MuscleGroupExercises({ groupKey }: { groupKey: MuscleGro
 
       {data && filtered.length === 0 && exercises.length > 0 && (
         <p className="rounded-[1.75rem] bg-[var(--bg-elevated)] px-4 py-6 text-[var(--muted)]">
-          Keine Übungen für diesen Filter.
+          No exercises for this filter.
         </p>
       )}
 
@@ -290,7 +290,7 @@ function ExerciseFilterPicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Filter wählen"
+        aria-label="Choose filter"
         aria-haspopup="dialog"
         aria-expanded={open}
         className="arc-tabbar-glass grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[1.75rem] px-4 py-2.5 text-left outline-none transition hover:bg-white/5"
@@ -316,7 +316,7 @@ function ExerciseFilterPicker({
       {open && (
         <div
           role="dialog"
-          aria-label="Filter wählen"
+          aria-label="Choose filter"
           className="arc-tabbar-glass absolute left-0 top-full z-30 mt-2 w-full min-w-[14rem] rounded-[1.75rem] p-3"
         >
           <div
@@ -455,8 +455,8 @@ function ExerciseSection({
                 onClick={() => onToggle(ex.name)}
                 aria-label={
                   selected
-                    ? `${ex.name} aus Session entfernen`
-                    : `${ex.name} zur Session hinzufügen`
+                    ? `Remove ${ex.name} from session`
+                    : `Add ${ex.name} to session`
                 }
                 aria-pressed={selected}
                 className={`flex w-14 shrink-0 items-center justify-center rounded-[1.75rem] text-2xl font-light transition ${

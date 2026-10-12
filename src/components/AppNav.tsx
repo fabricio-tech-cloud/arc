@@ -62,53 +62,140 @@ function sectionTitle(pathname: string) {
   return "Overview";
 }
 
-export function AppNav() {
+function linkActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(href));
+}
+
+export function AppNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const section = sectionTitle(pathname);
   const activeIndex = Math.max(
     0,
-    links.findIndex(
-      (link) => pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href)),
-    ),
+    links.findIndex((link) => linkActive(pathname, link.href)),
   );
 
   return (
-    <>
-      <header className="animate-rise relative flex flex-col items-center justify-center pb-2">
-        <Link
-          href="/profile"
-          aria-label="Profile"
-          className="absolute right-0 top-0 z-20 flex h-8 w-8 items-center justify-center rounded-full text-white/45 transition hover:bg-white/8 hover:text-white/80"
-        >
-          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <circle cx="12" cy="8" r="3.25" />
-            <path d="M5.5 19.5c1.6-3.2 4-4.75 6.5-4.75s4.9 1.55 6.5 4.75" strokeLinecap="round" />
-          </svg>
-        </Link>
-        <span
-          className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-[58%] scale-x-[1.65] opacity-55"
-          aria-hidden
-        >
-          <ThinkingOrb state="composing" size={64} theme="dark" />
-        </span>
-        <Link
-          href="/"
-          className="relative z-10 text-2xl font-normal tracking-[0.08em] text-[var(--text)] uppercase"
-          style={{ fontFamily: "var(--font-logo), sans-serif" }}
-        >
-          ARC
-        </Link>
-        <p
-          className="relative z-10 mt-0.5 text-xs font-normal tracking-wide text-[var(--muted)]"
-          style={{ fontFamily: "var(--font-logo), sans-serif" }}
-        >
-          {section}
-        </p>
-      </header>
+    <div className="arc-root min-h-screen lg:bg-[#050505] lg:p-1.5">
+      <div className="arc-frame mx-auto flex min-h-screen w-full max-w-5xl flex-col lg:mx-0 lg:h-[calc(100vh-0.75rem)] lg:min-h-0 lg:max-w-none">
+        {/* Stage: painting; desktop nav sits inside on the left */}
+        <div className="arc-stage relative flex min-h-0 min-w-0 flex-1 flex-col px-4 pb-24 pt-6 sm:px-6 lg:m-0 lg:flex-row lg:overflow-hidden lg:rounded-[1.75rem] lg:border lg:border-white/[0.08] lg:p-0">
+          <aside
+            className="relative z-20 hidden w-[var(--sidebar-width)] shrink-0 flex-col items-center border-r border-white/10 bg-black/55 py-5 lg:flex"
+            aria-label="Main navigation"
+          >
+            <Link
+              href="/"
+              aria-label="Arc home"
+              className="mb-6 px-1 text-center text-[11px] font-normal tracking-[0.14em] text-[var(--accent)] uppercase transition hover:text-white"
+              style={{ fontFamily: "var(--font-logo), sans-serif" }}
+            >
+              ARC
+            </Link>
 
+            <nav className="flex flex-1 flex-col items-center gap-1">
+              {links.map((link) => {
+                const active = linkActive(pathname, link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-label={link.label}
+                    title={link.label}
+                    className={`flex h-10 w-10 items-center justify-center rounded-[0.85rem] transition ${
+                      active
+                        ? "bg-white/[0.12] text-white"
+                        : "text-[var(--muted)] hover:bg-white/[0.05] hover:text-[var(--text)]"
+                    }`}
+                  >
+                    {link.icon}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <Link
+              href="/profile"
+              aria-label="Profile"
+              title="Profile"
+              className={`mt-auto flex h-10 w-10 items-center justify-center rounded-[0.85rem] transition ${
+                pathname.startsWith("/profile")
+                  ? "bg-white/[0.12] text-white"
+                  : "text-[var(--muted)] hover:bg-white/[0.05] hover:text-[var(--text)]"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <circle cx="12" cy="8" r="3.25" />
+                <path d="M5.5 19.5c1.6-3.2 4-4.75 6.5-4.75s4.9 1.55 6.5 4.75" strokeLinecap="round" />
+              </svg>
+            </Link>
+          </aside>
+
+          {/* Desktop: brand + orb centered over the content column (not the rail) */}
+          <header className="pointer-events-none absolute top-4 right-0 z-30 hidden animate-rise flex-col items-center justify-center lg:flex lg:left-[var(--sidebar-width)]">
+            <span
+              className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-[58%] scale-x-[1.85] scale-y-[1.15] opacity-55"
+              aria-hidden
+            >
+              <ThinkingOrb state="composing" size={64} theme="dark" />
+            </span>
+            <Link
+              href="/"
+              className="pointer-events-auto relative z-10 text-4xl font-normal tracking-[0.1em] text-[var(--text)] uppercase"
+              style={{ fontFamily: "var(--font-logo), sans-serif" }}
+            >
+              ARC
+            </Link>
+            <p
+              className="relative z-10 mt-1 text-sm font-normal tracking-wide text-[var(--muted)]"
+              style={{ fontFamily: "var(--font-logo), sans-serif" }}
+            >
+              {section}
+            </p>
+          </header>
+
+          <div className="arc-scroll relative z-10 flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-y-auto lg:px-8 lg:pb-8 lg:pt-28">
+            {/* Compact < 1024: top brand header */}
+            <header className="animate-rise relative flex flex-col items-center justify-center pb-2 lg:hidden">
+              <Link
+                href="/profile"
+                aria-label="Profile"
+                className="absolute right-0 top-0 z-20 flex h-8 w-8 items-center justify-center rounded-full text-white/45 transition hover:bg-white/8 hover:text-white/80"
+              >
+                <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <circle cx="12" cy="8" r="3.25" />
+                  <path d="M5.5 19.5c1.6-3.2 4-4.75 6.5-4.75s4.9 1.55 6.5 4.75" strokeLinecap="round" />
+                </svg>
+              </Link>
+              <span
+                className="pointer-events-none absolute left-1/2 top-1/2 z-0 -translate-x-1/2 -translate-y-[58%] scale-x-[1.65] opacity-55"
+                aria-hidden
+              >
+                <ThinkingOrb state="composing" size={64} theme="dark" />
+              </span>
+              <Link
+                href="/"
+                className="relative z-10 text-2xl font-normal tracking-[0.08em] text-[var(--text)] uppercase"
+                style={{ fontFamily: "var(--font-logo), sans-serif" }}
+              >
+                ARC
+              </Link>
+              <p
+                className="relative z-10 mt-0.5 text-xs font-normal tracking-wide text-[var(--muted)]"
+                style={{ fontFamily: "var(--font-logo), sans-serif" }}
+              >
+                {section}
+              </p>
+            </header>
+
+            <main className="relative z-10 mt-6 lg:mt-0">{children}</main>
+          </div>
+        </div>
+      </div>
+
+      {/* Compact < 1024: bottom tab bar */}
       <nav
-        className="arc-tabbar fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2"
-        aria-label="Hauptnavigation"
+        className="arc-tabbar fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 lg:hidden"
+        aria-label="Main navigation"
       >
         <div className="relative w-full max-w-[20rem]">
           <div className="arc-tabbar-glass relative grid w-full grid-cols-4 rounded-full p-1.5">
@@ -135,8 +222,6 @@ export function AppNav() {
               );
             })}
           </div>
-          {/* Overlay above glass. Default BorderBeam masks paint invisible here; use a
-              box-shadow + rotating conic border without mask-composite. */}
           <BorderBeam
             className="pointer-events-none"
             style={{ position: "absolute", inset: 0, zIndex: 20 }}
@@ -145,7 +230,7 @@ export function AppNav() {
             colorVariant="ice"
             theme="dark"
             strength={1}
-            duration={2.8}
+            duration={14}
             aria-hidden
             css={`
               [data-beam="{id}"] {
@@ -195,6 +280,6 @@ export function AppNav() {
           </BorderBeam>
         </div>
       </nav>
-    </>
+    </div>
   );
 }

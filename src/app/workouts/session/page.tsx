@@ -9,8 +9,14 @@ import {
 } from "@/components/SessionCart";
 import { SwipeBack } from "@/components/SwipeBack";
 import { GROUP_LABELS } from "@/lib/muscles";
-import { toISODateLocal, type WeekMode } from "@/lib/session-schedule";
-import { WEEKDAYS, todayIsoWeekday } from "@/lib/supplements";
+import {
+  SLOT_DEFAULT_TIME,
+  toISODateLocal,
+  type SessionSlot,
+  type WeekMode,
+} from "@/lib/session-schedule";
+import { WeekdayToggle } from "@/components/WeekdayToggle";
+import { todayIsoWeekday } from "@/lib/supplements";
 
 export default function SessionCartPage() {
   const router = useRouter();
@@ -20,6 +26,7 @@ export default function SessionCartPage() {
   const [days, setDays] = useState<number[]>(() => [todayIsoWeekday()]);
   const [weekMode, setWeekMode] = useState<WeekMode>("every");
   const [intervalWeeks, setIntervalWeeks] = useState(2);
+  const [slot, setSlot] = useState<SessionSlot>("morning");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +72,7 @@ export default function SessionCartPage() {
     e.preventDefault();
     if (items.length === 0 || busy) return;
     if (days.length === 0) {
-      setError("Mindestens einen Wochentag wählen");
+      setError("Pick at least one weekday");
       return;
     }
     setBusy(true);
@@ -81,6 +88,7 @@ export default function SessionCartPage() {
           week_mode: weekMode,
           interval_weeks: weekMode === "interval" ? intervalWeeks : null,
           anchor_date: toISODateLocal(new Date()),
+          time_of_day: SLOT_DEFAULT_TIME[slot],
           exercises: items.map((item) => ({
             name: item.name,
             muscle_group: item.muscleGroup,
@@ -111,7 +119,7 @@ export default function SessionCartPage() {
             Session
           </h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Noch keine Übungen im Warenkorb.
+            No exercises in the cart yet.
           </p>
         </div>
         <div className="flex justify-center">
@@ -119,7 +127,7 @@ export default function SessionCartPage() {
             href="/workouts"
             className="arc-chrome inline-flex rounded-[1.75rem] px-4 py-2.5 text-sm font-semibold"
           >
-            Übungen wählen
+            Choose exercises
           </Link>
         </div>
       </div>
@@ -137,7 +145,7 @@ export default function SessionCartPage() {
           Session
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {items.length} {items.length === 1 ? "Übung" : "Übungen"} · Planen & eintragen
+          {items.length} {items.length === 1 ? "exercise" : "exercises"} · Plan and save
         </p>
       </div>
 
@@ -153,38 +161,52 @@ export default function SessionCartPage() {
         </label>
 
         <div>
-          <p className="mb-2 text-sm text-[var(--muted)]">Wochentage</p>
-          <div className="grid grid-cols-7 gap-1.5">
-            {WEEKDAYS.map((d) => {
-              const on = days.includes(d.value);
-              return (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => toggleDay(d.value)}
-                  aria-pressed={on}
-                  className={`rounded-[1.25rem] py-2 text-center text-sm font-medium transition ${
-                    on
-                      ? "arc-chrome"
-                      : "border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]"
+          <p className="mb-2 text-sm text-[var(--muted)]">Weekdays</p>
+          <WeekdayToggle days={days} onToggle={toggleDay} />
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm text-[var(--muted)]">Time of day</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ["morning", "Morning", SLOT_DEFAULT_TIME.morning],
+                ["noon", "Noon", SLOT_DEFAULT_TIME.noon],
+              ] as const
+            ).map(([value, label, time]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSlot(value)}
+                aria-pressed={slot === value}
+                className={`rounded-[1.25rem] px-3 py-2.5 text-left transition ${
+                  slot === value
+                    ? "arc-chrome font-semibold"
+                    : "border border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                <span className="block text-sm">{label}</span>
+                <span
+                  className={`mt-0.5 block text-[11px] tabular-nums ${
+                    slot === value ? "opacity-80" : "text-[var(--muted)]"
                   }`}
                 >
-                  {d.label}
-                </button>
-              );
-            })}
+                  {time}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
         <div>
-          <p className="mb-2 text-sm text-[var(--muted)]">Rhythmus</p>
+          <p className="mb-2 text-sm text-[var(--muted)]">Schedule</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(
               [
-                ["every", "Jede Woche"],
-                ["A", "A-Woche"],
-                ["B", "B-Woche"],
-                ["interval", "Intervall"],
+                ["every", "Every week"],
+                ["A", "Week A"],
+                ["B", "Week B"],
+                ["interval", "Interval"],
               ] as const
             ).map(([mode, label]) => (
               <button
@@ -204,7 +226,7 @@ export default function SessionCartPage() {
           </div>
           {weekMode === "interval" && (
             <label className="mt-3 block text-sm">
-              <span className="mb-1 block text-[var(--muted)]">Alle N Wochen</span>
+              <span className="mb-1 block text-[var(--muted)]">Every N weeks</span>
               <input
                 type="number"
                 min={2}
@@ -217,13 +239,13 @@ export default function SessionCartPage() {
           )}
           {(weekMode === "A" || weekMode === "B") && (
             <p className="mt-2 text-xs text-[var(--muted)]">
-              Aktuelle Woche = A-Woche. Abwechselnd mit B.
+              Current week = week A. Alternates with B.
             </p>
           )}
         </div>
 
         <label className="block text-sm">
-          <span className="mb-1 block text-[var(--muted)]">Notiz</span>
+          <span className="mb-1 block text-[var(--muted)]">Note</span>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -253,7 +275,7 @@ export default function SessionCartPage() {
                 onClick={() => remove(item.name)}
                 className="shrink-0 text-sm text-[var(--muted)] hover:text-[var(--danger)]"
               >
-                Entfernen
+                Remove
               </button>
             </div>
 
@@ -270,7 +292,7 @@ export default function SessionCartPage() {
                     <button
                       type="button"
                       onClick={() => toggleFailure(item.name, i)}
-                      aria-label={s.failure ? "Auf Reps wechseln" : "Auf Failure wechseln"}
+                      aria-label={s.failure ? "Switch to reps" : "Switch to failure"}
                       aria-pressed={s.failure}
                       className={`shrink-0 px-1.5 text-[10px] font-semibold tracking-wide transition ${
                         s.failure
@@ -325,7 +347,7 @@ export default function SessionCartPage() {
                   <button
                     type="button"
                     onClick={() => removeSetRow(item.name, i)}
-                    aria-label={`Set ${i + 1} entfernen`}
+                    aria-label={`Remove set ${i + 1}`}
                     className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--danger)]"
                   >
                     ×
@@ -351,14 +373,14 @@ export default function SessionCartPage() {
           disabled={busy || days.length === 0}
           className="rounded-[1.75rem] border border-[var(--accent)]/35 bg-emerald-500/15 px-5 py-2.5 font-semibold text-[var(--accent)] transition hover:bg-emerald-500/25 hover:text-white disabled:opacity-60"
         >
-          {busy ? "Eintragen…" : "In Kalender eintragen"}
+          {busy ? "Saving..." : "Add to calendar"}
         </button>
         <button
           type="button"
           onClick={() => clear()}
           className="rounded-[1.75rem] border border-[var(--accent)]/35 bg-red-500/12 px-4 py-2.5 text-sm text-[var(--accent)] transition hover:bg-red-500/20 hover:text-white"
         >
-          Liste leeren
+          Clear list
         </button>
       </div>
     </form>

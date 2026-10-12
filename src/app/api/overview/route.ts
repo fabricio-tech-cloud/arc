@@ -8,8 +8,10 @@ import {
   type MuscleGroupKey,
 } from "@/lib/muscles";
 import {
+  normalizePlanTime,
   parsePlanExercises,
   planMatchesDate,
+  slotFromTime,
   type SessionPlanRow,
   type WeekMode,
 } from "@/lib/session-schedule";
@@ -76,7 +78,7 @@ function groupsFromAbbr(abbrs: string[]): MuscleGroupKey[] {
   return out;
 }
 
-const DAY_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export async function GET() {
   try {
@@ -235,9 +237,10 @@ export async function GET() {
           week_mode,
           interval_weeks,
           anchor_date::text AS anchor_date,
+          to_char(time_of_day, 'HH24:MI') AS time_of_day,
           exercises
         FROM session_plans
-        ORDER BY created_at ASC
+        ORDER BY time_of_day ASC, created_at ASC
       `) as Record<string, unknown>[];
     } catch {
       planRows = [];
@@ -263,6 +266,7 @@ export async function GET() {
       week_mode: (row.week_mode as WeekMode) ?? "every",
       interval_weeks: row.interval_weeks == null ? null : Number(row.interval_weeks),
       anchor_date: String(row.anchor_date).slice(0, 10),
+      time_of_day: normalizePlanTime(row.time_of_day),
       exercises: parsePlanExercises(row.exercises),
     }));
 
@@ -388,6 +392,66 @@ export async function GET() {
       const fromSchedule = !entry?.abbr?.length && planAbbr.length > 0;
       const fromInfer = !entry?.abbr?.length && !fromSchedule && isToday && inferredToday.length > 0;
 
+      type DaySession = {
+        planId: string | null;
+        workoutId: string | null;
+        title: string;
+        abbr: string[];
+        slot: ReturnType<typeof slotFromTime>;
+        time: string | null;
+        exerciseCount: number;
+        exercises: { name: string }[];
+        status: "logged" | "planned" | "active";
+      };
+
+      const sessions: DaySession[] = duePlans.map((plan) => {
+        const groups = [
+          ...new Set(
+            plan.exercises
+              .map((ex) => resolveMuscleGroup(ex.muscle_group))
+              .filter((g): g is MuscleGroupKey => !!g),
+          ),
+        ];
+        const sessionAbbr = groups.map((g) => GROUP_ABBR[g]);
+        const title =
+          plan.name?.trim() ||
+          (groups.length ? groups.map((g) => GROUP_LABELS[g]).join(" + ") : "Session");
+        const slot = slotFromTime(plan.time_of_day);
+        const loggedForDay = entry && entry.completed;
+        return {
+          planId: plan.id,
+          workoutId: entry?.id ?? null,
+          title,
+          abbr: sessionAbbr,
+          slot,
+          time: plan.time_of_day,
+          exerciseCount: plan.exercises.length,
+          exercises: plan.exercises
+            .map((ex) => ({ name: ex.name.trim() }))
+            .filter((ex) => ex.name),
+          status: loggedForDay
+            ? ("logged" as const)
+            : entry && !entry.completed
+              ? ("active" as const)
+              : ("planned" as const),
+        };
+      });
+
+      // Logged/active day with no matching plan still shows one session card.
+      if (sessions.length === 0 && entry) {
+        sessions.push({
+          planId: null,
+          workoutId: entry.id,
+          title: entry.title,
+          abbr: entry.abbr,
+          slot: "morning",
+          time: null,
+          exerciseCount: 0,
+          exercises: [],
+          status: entry.completed ? "logged" : "active",
+        });
+      }
+
       return {
         label,
         date,
@@ -398,6 +462,7 @@ export async function GET() {
         workoutId: entry?.id ?? null,
         planId: duePlans[0]?.id ?? null,
         title: entry?.title ?? planTitle,
+        sessions,
       };
     });
 

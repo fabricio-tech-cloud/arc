@@ -1,8 +1,16 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { slotLabel, type SessionSlot } from "@/lib/session-schedule";
 
 function Ring({ value, max = 4 }: { value: number; max?: number }) {
   const size = 44;
@@ -46,7 +54,7 @@ function CardMenu() {
   return (
     <button
       type="button"
-      aria-label="Optionen"
+      aria-label="Options"
       className="flex h-7 w-7 items-center justify-center rounded-full text-white/45 transition hover:bg-white/8 hover:text-white/80"
     >
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -55,6 +63,18 @@ function CardMenu() {
     </button>
   );
 }
+
+export type WeekDaySession = {
+  planId: string | null;
+  workoutId: string | null;
+  title: string;
+  abbr: string[];
+  slot: SessionSlot;
+  time: string | null;
+  exerciseCount: number;
+  exercises?: { name: string }[];
+  status: "logged" | "planned" | "active";
+};
 
 export type WeekDay = {
   label: string;
@@ -66,7 +86,30 @@ export type WeekDay = {
   workoutId: string | null;
   planId?: string | null;
   title: string | null;
+  sessions?: WeekDaySession[];
 };
+
+function formatDayLong(date: string) {
+  try {
+    return new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return date;
+  }
+}
+
+function hapticTick() {
+  try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(8);
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 export function ThisWeekStrip({
   days,
@@ -75,68 +118,395 @@ export function ThisWeekStrip({
   days: WeekDay[];
   today: WeekDay | null;
 }) {
+  const todayIndex = Math.max(
+    0,
+    days.findIndex((d) => d.isToday),
+  );
+  const [expanded, setExpanded] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(todayIndex >= 0 ? todayIndex : 0);
+  const [mouseDragging, setMouseDragging] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const skipScrollSync = useRef(false);
+  const mouseDrag = useRef<{
+    pointerId: number;
+    startX: number;
+    startScroll: number;
+    moved: boolean;
+    lastX: number;
+    lastT: number;
+    velocity: number;
+  } | null>(null);
+
   const todayTags = today?.abbr ?? [];
   const todayLabel =
     todayTags.length === 0
-      ? "Heute: Ruhe / offen"
+      ? "Today: rest / open"
       : today?.scheduled
-        ? `Heute anstehend: ${today.title ?? todayTags.join(" · ")}`
+        ? `Today upcoming: ${today.title ?? todayTags.join(" · ")}`
         : today?.planned
-          ? `Heute geplant: ${todayTags.join(" · ")}`
-          : `Heute: ${todayTags.join(" · ")}`;
+          ? `Today planned: ${todayTags.join(" · ")}`
+          : `Today: ${todayTags.join(" · ")}`;
+
+  useEffect(() => {
+    if (!expanded) return;
+    const idx = days.findIndex((d) => d.isToday);
+    const next = idx >= 0 ? idx : 0;
+    setActiveIndex(next);
+    skipScrollSync.current = true;
+    requestAnimationFrame(() => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const width = el.clientWidth;
+      el.scrollTo({ left: next * width, behavior: "auto" });
+      skipScrollSync.current = false;
+    });
+  }, [expanded, days]);
+
+  function scrollToIndex(index: number, behavior: ScrollBehavior = "smooth") {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const clamped = Math.max(0, Math.min(days.length - 1, index));
+    skipScrollSync.current = true;
+    setActiveIndex(clamped);
+    el.scrollTo({ left: clamped * el.clientWidth, behavior });
+    window.setTimeout(() => {
+      skipScrollSync.current = false;
+    }, behavior === "smooth" ? 320 : 40);
+  }
+
+  function onScrollerScroll() {
+    const el = scrollerRef.current;
+    if (!el || skipScrollSync.current || !el.clientWidth) return;
+    const next = Math.round(el.scrollLeft / el.clientWidth);
+    if (next !== activeIndex && next >= 0 && next < days.length) {
+      setActiveIndex(next);
+      hapticTick();
+    }
+  }
+
+  function onMouseDragDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // Desktop mouse drag-to-swipe; touch keeps native scroll.
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, select, label")) return;
+
+    mouseDrag.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      moved: false,
+      lastX: e.clientX,
+      lastT: performance.now(),
+      velocity: 0,
+    };
+    setMouseDragging(true);
+    el.classList.add("scroll-auto");
+    el.classList.remove("scroll-smooth");
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function onMouseDragMove(e: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDrag.current;
+    const el = scrollerRef.current;
+    if (!drag || !el || e.pointerId !== drag.pointerId) return;
+
+    const dx = e.clientX - drag.startX;
+    if (!drag.moved && Math.abs(dx) < 4) return;
+    drag.moved = true;
+
+    const now = performance.now();
+    const dt = Math.max(1, now - drag.lastT);
+    drag.velocity = ((e.clientX - drag.lastX) / dt) * 1000;
+    drag.lastX = e.clientX;
+    drag.lastT = now;
+
+    el.scrollLeft = drag.startScroll - dx;
+    e.preventDefault();
+  }
+
+  function endMouseDrag(e: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDrag.current;
+    const el = scrollerRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    mouseDrag.current = null;
+    setMouseDragging(false);
+
+    if (el) {
+      el.classList.add("scroll-smooth");
+      el.classList.remove("scroll-auto");
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+
+      if (drag.moved && el.clientWidth) {
+        const width = el.clientWidth;
+        const projected = el.scrollLeft - drag.velocity * 0.18;
+        let next = Math.round(projected / width);
+        // Prefer direction of a clear flick
+        if (Math.abs(drag.velocity) > 450) {
+          next = drag.velocity < 0 ? activeIndex + 1 : activeIndex - 1;
+        }
+        scrollToIndex(next);
+      }
+    }
+  }
+
+  const activeDay = days[activeIndex] ?? null;
 
   return (
-    <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
+    <div
+      className={`arc-week-card relative rounded-[1.75rem] bg-[var(--bg-elevated)] transition-[padding] duration-300 ${
+        expanded ? "p-4 sm:p-5" : "p-4"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="mb-3 flex w-full items-baseline justify-between gap-2 text-left"
+        aria-expanded={expanded}
+      >
         <p className="text-[15px] font-medium text-white">This week</p>
-        <p className="text-[12px] text-white/40">{todayLabel}</p>
-      </div>
-      <div className="grid grid-cols-7 gap-1.5">
-        {days.map((day) => (
-          <div
-            key={day.date}
-            className={`flex min-h-[4.25rem] flex-col items-center rounded-[1.75rem] px-1 py-2 text-center transition ${
-              day.isToday
-                ? "bg-white/12 ring-1 ring-white/20"
-                : day.scheduled
-                  ? "bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/25"
-                  : "bg-white/[0.04]"
+        <span className="flex items-center gap-1.5 text-[12px] text-white/40">
+          {todayLabel}
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
+              expanded ? "rotate-90" : ""
             }`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden
           >
-            <span
-              className={`text-[10px] font-medium ${
-                day.isToday ? "text-white" : "text-white/40"
-              }`}
-            >
-              {day.label}
-            </span>
-            <div className="mt-1.5 flex flex-1 flex-col items-center justify-center gap-0.5">
-              {day.abbr.length > 0 ? (
-                day.abbr.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className={`text-[11px] font-semibold leading-tight ${
-                      day.scheduled && !day.workoutId
-                        ? "text-[var(--accent)]"
-                        : day.isToday
-                          ? "text-white"
-                          : "text-white/70"
-                    }`}
-                  >
-                    {tag}
-                  </span>
-                ))
-              ) : (
-                <span className="text-[11px] text-white/25">—</span>
-              )}
-            </div>
+            <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
+
+      {!expanded ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="grid w-full grid-cols-7 gap-1.5"
+            aria-label="Expand week schedule"
+          >
+            {days.map((day) => (
+              <div
+                key={day.date}
+                className={`flex min-h-[4.25rem] flex-col items-center rounded-[1.75rem] px-1 py-2 text-center transition ${
+                  day.isToday
+                    ? "bg-white/12 ring-1 ring-white/20"
+                    : day.scheduled
+                      ? "bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/25"
+                      : "bg-white/[0.04]"
+                }`}
+              >
+                <span
+                  className={`text-[10px] font-medium ${
+                    day.isToday ? "text-white" : "text-white/40"
+                  }`}
+                >
+                  {day.label}
+                </span>
+                <div className="mt-1.5 flex flex-1 flex-col items-center justify-center gap-0.5">
+                  {day.abbr.length > 0 ? (
+                    day.abbr.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className={`text-[11px] font-semibold leading-tight ${
+                          day.scheduled && !day.workoutId
+                            ? "text-[var(--accent)]"
+                            : day.isToday
+                              ? "text-white"
+                              : "text-white/70"
+                        }`}
+                      >
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[11px] text-white/25">-</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </button>
+          <p className="mt-3 text-[10px] leading-relaxed text-white/30">
+            Keys: Ch Chest · Sh Shoulders · Ar Arms · Bk Back · Ab Abs · Lg Legs
+            {days.some((d) => d.scheduled) ? " · Highlight = planned session" : ""}
+            {" · Tap to expand"}
+          </p>
+        </>
+      ) : (
+        <div className="animate-rise space-y-3">
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {days.map((day, i) => (
+              <button
+                key={day.date}
+                type="button"
+                onClick={() => {
+                  hapticTick();
+                  scrollToIndex(i);
+                }}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition ${
+                  i === activeIndex
+                    ? "bg-white/14 text-white ring-1 ring-white/20"
+                    : day.isToday
+                      ? "text-white/70"
+                      : "text-white/40 hover:text-white/65"
+                }`}
+              >
+                {day.label}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
-      <p className="mt-3 text-[10px] leading-relaxed text-white/30">
-        Kürzel: Br Brust · Sch Schultern · Ar Arme · Rü Rücken · Ba Bauch · Be Beine
-        {days.some((d) => d.scheduled) ? " · Markiert = geplante Session" : ""}
-      </p>
+
+          <div
+            ref={scrollerRef}
+            onScroll={onScrollerScroll}
+            onPointerDown={onMouseDragDown}
+            onPointerMove={onMouseDragMove}
+            onPointerUp={endMouseDrag}
+            onPointerCancel={endMouseDrag}
+            className={`flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] touch-pan-x select-none [&::-webkit-scrollbar]:hidden ${
+              mouseDragging ? "cursor-grabbing" : "cursor-grab"
+            }`}
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {days.map((day) => {
+              const sessions = day.sessions ?? [];
+              const morning = sessions.filter((s) => s.slot === "morning");
+              const noon = sessions.filter((s) => s.slot === "noon");
+              const slots: { key: SessionSlot; label: string; items: WeekDaySession[] }[] = [
+                { key: "morning", label: slotLabel("morning"), items: morning },
+                { key: "noon", label: slotLabel("noon"), items: noon },
+              ];
+
+              return (
+                <div
+                  key={day.date}
+                  className="w-full shrink-0 snap-center snap-always px-0.5"
+                >
+                  <div className="min-h-[13.5rem]">
+                    <div className="mb-4 flex items-baseline justify-between gap-2">
+                      <div>
+                        <p className="text-[15px] font-medium text-white">
+                          {formatDayLong(day.date)}
+                        </p>
+                        {day.isToday ? (
+                          <p className="mt-0.5 text-[11px] text-[var(--accent)]">Today</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="space-y-5">
+                      {slots.map((slot) => (
+                        <section key={slot.key}>
+                          <div className="mb-2 flex items-baseline justify-between gap-2">
+                            <p className="text-[12px] font-medium tracking-wide text-white/55 uppercase">
+                              {slot.label}
+                            </p>
+                            {slot.items[0]?.time ? (
+                              <p className="text-[11px] tabular-nums text-white/35">
+                                {slot.items[0].time}
+                              </p>
+                            ) : null}
+                          </div>
+
+                          <div className="flex min-h-[4.5rem] gap-3">
+                            <span
+                              aria-hidden
+                              className={`w-[3px] shrink-0 self-stretch rounded-full ${
+                                slot.key === "morning"
+                                  ? "bg-[var(--accent)]"
+                                  : "bg-[var(--warn)]"
+                              } ${slot.items.length === 0 ? "opacity-25" : "opacity-85"}`}
+                            />
+                            <div className="min-w-0 flex-1 space-y-2">
+                              {slot.items.length === 0 ? (
+                                <p className="text-[13px] text-white/30">Open</p>
+                              ) : (
+                                slot.items.map((session, si) => {
+                                  const exercises = session.exercises ?? [];
+                                  return (
+                                    <div
+                                      key={`${session.planId ?? session.workoutId ?? "s"}-${si}`}
+                                    >
+                                      <div className="flex items-baseline justify-between gap-2">
+                                        <p className="truncate text-[14px] font-medium text-white">
+                                          {session.title}
+                                        </p>
+                                        <span className="shrink-0 text-[10px] capitalize text-white/40">
+                                          {session.status}
+                                        </span>
+                                      </div>
+                                      {session.abbr.length > 0 ? (
+                                        <p className="mt-0.5 text-[12px] text-white/40">
+                                          {session.abbr.join(" · ")}
+                                        </p>
+                                      ) : null}
+                                      {exercises.length > 0 ? (
+                                        <ul className="mt-2 space-y-1">
+                                          {exercises.map((ex) => (
+                                            <li
+                                              key={ex.name}
+                                              className="text-[13px] text-white/70"
+                                            >
+                                              {ex.name}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      ) : (
+                                        <p className="mt-2 text-[13px] text-white/30">
+                                          No exercises listed
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 pt-0.5">
+            <p className="text-[10px] text-white/30">Swipe or drag between days</p>
+            <div className="flex items-center gap-1.5">
+              {days.map((day, i) => (
+                <span
+                  key={day.date}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === activeIndex ? "w-4 bg-white/70" : "w-1.5 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
+            {activeDay ? (
+              <p className="text-[10px] tabular-nums text-white/30">
+                {activeIndex + 1}/{days.length}
+              </p>
+            ) : (
+              <span />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -249,11 +619,11 @@ export function TodayCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)]">
+    <div className="overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] lg:border lg:border-white/10 lg:bg-black/50">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative flex w-full items-center gap-3 overflow-hidden px-5 py-5 text-left transition hover:bg-[var(--bg-soft)]"
+        className="relative flex w-full items-center gap-3 overflow-hidden px-5 py-5 text-left transition hover:bg-[var(--bg-soft)] lg:hover:bg-white/[0.04]"
         aria-expanded={open}
       >
         <span
@@ -283,7 +653,9 @@ export function TodayCard({
           }`}
           aria-hidden
         >
-          ›
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </span>
       </button>
 
@@ -302,7 +674,7 @@ export function TodayCard({
               )}
             </div>
             {workout?.status === "rest" ? (
-              <p className="text-[14px] text-white/55">No session planned — rest or open day.</p>
+              <p className="text-[14px] text-white/55">No session planned - rest or open day.</p>
             ) : (
               <div className="space-y-3">
                 <p className="text-[15px] font-medium text-white">
@@ -343,7 +715,7 @@ export function TodayCard({
                     href={workout.workoutId ? `/workouts/${workout.workoutId}` : "/workouts"}
                     className="inline-flex text-[13px] text-white/55 underline-offset-2 hover:text-white hover:underline"
                   >
-                    Session öffnen →
+                    {"Open session ->"}
                   </Link>
                 ) : (
                   <button
@@ -353,9 +725,9 @@ export function TodayCard({
                     className="rounded-[1.25rem] border border-[var(--accent)]/35 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-emerald-500/25 hover:text-white disabled:opacity-60"
                   >
                     {starting
-                      ? "…"
+                      ? "..."
                       : workout?.status === "active"
-                        ? "Session fortsetzen"
+                        ? "Continue session"
                         : "Start session"}
                   </button>
                 )}
@@ -378,7 +750,7 @@ export function TodayCard({
               <p className="text-[14px] text-white/55">
                 Nothing scheduled.{" "}
                 <Link href="/supplements" className="underline-offset-2 hover:underline">
-                  Set times →
+                  {"Set times ->"}
                 </Link>
               </p>
             ) : (
@@ -396,7 +768,7 @@ export function TodayCard({
                       />
                     ) : (
                       <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded-[1.75rem] bg-white/8 text-[10px] text-white/35">
-                        —
+                        -
                       </span>
                     )}
                     <div className="min-w-0 flex-1">
@@ -493,22 +865,22 @@ function weekGrid(
 }
 
 const MONTHS = [
-  "Januar",
-  "Februar",
-  "März",
+  "January",
+  "February",
+  "March",
   "April",
-  "Mai",
-  "Juni",
-  "Juli",
+  "May",
+  "June",
+  "July",
   "August",
   "September",
-  "Oktober",
+  "October",
   "November",
-  "Dezember",
+  "December",
 ];
-const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const VISIBLE_WEEKS = 3;
-/** 3 day-rows + 2 gaps (gap-1.5) — keeps vertical week slides clipped smoothly. */
+/** 3 day-rows + 2 gaps (gap-1.5) - keeps vertical week slides clipped smoothly. */
 const CAL_GRID_HEIGHT = "calc(3 * 4.75rem + 2 * 0.375rem)";
 
 export type CalendarDayInfo = {
@@ -520,7 +892,7 @@ export type CalendarDayInfo = {
 function shortExercise(name: string) {
   const clean = name.trim();
   if (clean.length <= 8) return clean;
-  return `${clean.slice(0, 7)}…`;
+  return `${clean.slice(0, 7)}...`;
 }
 
 function monthTitle(monday: Date, weekCount: number) {
@@ -534,15 +906,16 @@ function monthTitle(monday: Date, weekCount: number) {
   }
   if (startYear === endYear) {
     return {
-      label: `${MONTHS[startMonth]} – ${MONTHS[endMonth]}`,
+      label: `${MONTHS[startMonth]} - ${MONTHS[endMonth]}`,
       year: String(startYear),
     };
   }
   return {
-    label: `${MONTHS[startMonth]} ${startYear} – ${MONTHS[endMonth]}`,
+    label: `${MONTHS[startMonth]} ${startYear} - ${MONTHS[endMonth]}`,
     year: String(endYear),
   };
 }
+
 
 export function OverviewHeatmap({
   heatMap,
@@ -558,9 +931,13 @@ export function OverviewHeatmap({
     from: Date;
     to: Date;
     dir: "left" | "right" | "up" | "down";
-    on: boolean;
+    offsetX: number;
+    offsetY: number;
   } | null>(null);
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const busy = useRef(false);
   const drag = useRef({
     active: false,
     pointerId: -1,
@@ -569,9 +946,8 @@ export function OverviewHeatmap({
     axis: null as "x" | "y" | null,
     dx: 0,
     dy: 0,
+    moved: false,
   });
-  const [pull, setPull] = useState({ x: 0, y: 0 });
-  const busy = useRef(false);
 
   const merged: Record<string, CalendarDayInfo> = { ...calendarDays };
   for (const [date, count] of Object.entries(heatMap)) {
@@ -593,49 +969,92 @@ export function OverviewHeatmap({
       ]
     : [];
 
-  function navigate(next: Date, dir: "left" | "right" | "up" | "down") {
-    if (busy.current || slide) return;
-    const clamped =
-      next.getTime() > maxFuture.getTime() ? maxFuture : next;
-    if (clamped.getTime() === viewMonday.getTime()) return;
+  function setTrack(x: number, y: number, animate: boolean) {
+    const el = trackRef.current;
+    if (!el) return;
+    el.style.transition = animate
+      ? "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)"
+      : "none";
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+  }
+
+  function viewportSize() {
+    const el = viewportRef.current;
+    return {
+      w: el?.clientWidth || 1,
+      h: el?.clientHeight || 1,
+    };
+  }
+
+  function navigate(
+    next: Date,
+    dir: "left" | "right" | "up" | "down",
+    fromOffset = { x: 0, y: 0 },
+  ) {
+    if (busy.current) return;
+    const clamped = next.getTime() > maxFuture.getTime() ? maxFuture : next;
+    if (clamped.getTime() === viewMonday.getTime()) {
+      setTrack(0, 0, true);
+      return;
+    }
     busy.current = true;
     setSelected(null);
-    setPull({ x: 0, y: 0 });
-    setSlide({ from: viewMonday, to: clamped, dir, on: false });
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setSlide((s) => (s ? { ...s, on: true } : null));
-      });
+    setSlide({
+      from: viewMonday,
+      to: clamped,
+      dir,
+      offsetX: fromOffset.x,
+      offsetY: fromOffset.y,
     });
   }
 
+  useLayoutEffect(() => {
+    if (!slide) return;
+    const { w, h } = viewportSize();
+    const { dir, offsetX, offsetY } = slide;
+    if (dir === "left") setTrack(offsetX, 0, false);
+    else if (dir === "right") setTrack(-w + offsetX, 0, false);
+    else if (dir === "up") setTrack(0, offsetY, false);
+    else setTrack(0, -h + offsetY, false);
+
+    const id = requestAnimationFrame(() => {
+      if (dir === "left") setTrack(-w, 0, true);
+      else if (dir === "right") setTrack(0, 0, true);
+      else if (dir === "up") setTrack(0, -h, true);
+      else setTrack(0, 0, true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [slide]);
+
   function finishSlide() {
-    if (!slide?.on) return;
-    setViewMonday(slide.to);
+    if (!slide) return;
+    const next = slide.to;
+    setTrack(0, 0, false);
+    setViewMonday(next);
     setSlide(null);
     busy.current = false;
   }
 
-  function goPrevMonth() {
+  function goPrevMonth(fromOffset = { x: 0, y: 0 }) {
     const mid = addDays(viewMonday, 7);
     const prevMonthFirst = new Date(mid.getFullYear(), mid.getMonth() - 1, 1);
-    navigate(startOfWeekMonday(prevMonthFirst), "right");
+    navigate(startOfWeekMonday(prevMonthFirst), "right", fromOffset);
   }
 
-  function goNextMonth() {
-    if (atMaxFuture) return;
+  function goNextMonth(fromOffset = { x: 0, y: 0 }) {
+    if (atMaxFuture && fromOffset.x === 0 && fromOffset.y === 0) return;
     const mid = addDays(viewMonday, 7);
     const nextMonthFirst = new Date(mid.getFullYear(), mid.getMonth() + 1, 1);
-    navigate(startOfWeekMonday(nextMonthFirst), "left");
+    navigate(startOfWeekMonday(nextMonthFirst), "left", fromOffset);
   }
 
-  function goPrevWeek() {
-    navigate(addDays(viewMonday, -7), "down");
+  function goPrevWeek(fromOffset = { x: 0, y: 0 }) {
+    navigate(addDays(viewMonday, -7), "down", fromOffset);
   }
 
-  function goNextWeek() {
-    if (atMaxFuture) return;
-    navigate(addDays(viewMonday, 7), "up");
+  function goNextWeek(fromOffset = { x: 0, y: 0 }) {
+    if (atMaxFuture && fromOffset.x === 0 && fromOffset.y === 0) return;
+    navigate(addDays(viewMonday, 7), "up", fromOffset);
   }
 
   function onPointerDown(e: ReactPointerEvent) {
@@ -649,9 +1068,14 @@ export function OverviewHeatmap({
       axis: null,
       dx: 0,
       dy: 0,
+      moved: false,
     };
-    setPull({ x: 0, y: 0 });
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setTrack(0, 0, false);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   }
 
   function onPointerMove(e: ReactPointerEvent) {
@@ -659,74 +1083,75 @@ export function OverviewHeatmap({
     const dx = e.clientX - drag.current.startX;
     const dy = e.clientY - drag.current.startY;
     if (!drag.current.axis) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
       drag.current.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      drag.current.moved = true;
     }
+    const { w, h } = viewportSize();
     if (drag.current.axis === "x") {
-      const clamped = Math.max(-90, Math.min(90, dx));
-      drag.current.dx = clamped;
+      let x = dx;
+      if (atMaxFuture && x < 0) x = dx * 0.25;
+      x = Math.max(-w * 0.92, Math.min(w * 0.92, x));
+      drag.current.dx = x;
       drag.current.dy = 0;
-      setPull({ x: clamped, y: 0 });
+      setTrack(x, 0, false);
     } else {
-      const clamped = Math.max(-70, Math.min(70, dy));
+      let y = dy;
+      if (atMaxFuture && y < 0) y = dy * 0.25;
+      y = Math.max(-h * 0.92, Math.min(h * 0.92, y));
       drag.current.dx = 0;
-      drag.current.dy = clamped;
-      setPull({ x: 0, y: clamped });
+      drag.current.dy = y;
+      setTrack(0, y, false);
     }
   }
 
   function endDrag(e: ReactPointerEvent) {
     if (!drag.current.active || drag.current.pointerId !== e.pointerId) return;
-    const { axis, dx, dy } = drag.current;
+    const { axis, dx, dy, moved } = drag.current;
     drag.current.active = false;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       /* already released */
     }
-    setPull({ x: 0, y: 0 });
 
-    if (axis === "x" && Math.abs(dx) >= 48) {
-      if (dx < 0) goNextMonth();
-      else goPrevMonth();
+    const { w, h } = viewportSize();
+    const commitX = Math.abs(dx) >= Math.min(56, w * 0.22);
+    const commitY = Math.abs(dy) >= Math.min(48, h * 0.18);
+
+    if (axis === "x" && commitX) {
+      if (dx < 0) goNextMonth({ x: dx, y: 0 });
+      else goPrevMonth({ x: dx, y: 0 });
       return;
     }
-    if (axis === "y" && Math.abs(dy) >= 40) {
-      if (dy < 0) goNextWeek();
-      else goPrevWeek();
+    if (axis === "y" && commitY) {
+      if (dy < 0) goNextWeek({ x: 0, y: dy });
+      else goPrevWeek({ x: 0, y: dy });
+      return;
     }
+
+    if (moved) setTrack(0, 0, true);
+    else setTrack(0, 0, false);
+    drag.current.dx = 0;
+    drag.current.dy = 0;
   }
 
-  const dragging = pull.x !== 0 || pull.y !== 0;
   const fromCells = weekGrid(slide?.from ?? viewMonday, VISIBLE_WEEKS, merged);
   const toCells = slide ? weekGrid(slide.to, VISIBLE_WEEKS, merged) : null;
-
-  function trackTransform() {
-    if (dragging) {
-      return `translate(${pull.x * 0.35}px, ${pull.y * 0.35}px)`;
-    }
-    if (!slide) return "translate(0, 0)";
-    const { dir, on } = slide;
-    if (dir === "left") return on ? "translateX(-50%)" : "translateX(0)";
-    if (dir === "right") return on ? "translateX(0)" : "translateX(-50%)";
-    if (dir === "up") return on ? "translateY(-50%)" : "translateY(0)";
-    return on ? "translateY(0)" : "translateY(-50%)";
-  }
-
   const horizontal = !slide || slide.dir === "left" || slide.dir === "right";
-  const showDual = !!slide && toCells;
+  const showDual = !!slide && !!toCells;
 
   return (
     <div className="w-full">
-      <p className="mb-3 text-center text-[13px] font-medium text-white/70 transition-opacity duration-300 ease-out">
+      <p className="mb-3 text-center text-[13px] font-medium text-white/70">
         {title.label} <span className="text-white/35">{title.year}</span>
       </p>
 
       <div className="mb-1.5 flex justify-center">
         <button
           type="button"
-          aria-label="Vorherige Woche"
-          onClick={goPrevWeek}
+          aria-label="Previous week"
+          onClick={() => goPrevWeek()}
           className="flex h-7 w-7 items-center justify-center rounded-full text-white/45 transition duration-300 ease-out hover:bg-white/10 hover:text-white"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -738,8 +1163,8 @@ export function OverviewHeatmap({
       <div className="flex items-center gap-1.5">
         <button
           type="button"
-          aria-label="Vorheriger Monat"
-          onClick={goPrevMonth}
+          aria-label="Previous month"
+          onClick={() => goPrevMonth()}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/45 transition duration-300 ease-out hover:bg-white/10 hover:text-white"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -763,50 +1188,56 @@ export function OverviewHeatmap({
           </div>
 
           <div
+            ref={viewportRef}
             className="overflow-hidden"
-            style={showDual && !horizontal ? { height: CAL_GRID_HEIGHT } : undefined}
+            style={{ height: CAL_GRID_HEIGHT }}
           >
             <div
+              ref={trackRef}
               className={
                 showDual
                   ? horizontal
-                    ? "flex w-[200%] will-change-transform"
-                    : "flex w-full flex-col will-change-transform"
-                  : "w-full will-change-transform"
+                    ? "flex will-change-transform"
+                    : "flex flex-col will-change-transform"
+                  : "will-change-transform"
               }
-              style={{
-                transform: trackTransform(),
-                transition: dragging ? "none" : "transform 300ms ease-out",
-              }}
+              style={
+                showDual
+                  ? horizontal
+                    ? { width: "200%" }
+                    : { width: "100%", height: `calc(${CAL_GRID_HEIGHT} * 2)` }
+                  : { width: "100%" }
+              }
               onTransitionEnd={(e) => {
+                if (e.target !== e.currentTarget) return;
                 if (e.propertyName !== "transform") return;
-                finishSlide();
+                if (slide) finishSlide();
               }}
             >
               {showDual && slide.dir === "right" ? (
                 <>
-                  <div className={horizontal ? "w-1/2 shrink-0" : "w-full shrink-0"}>
+                  <div className={horizontal ? "w-1/2 shrink-0" : "h-1/2 w-full shrink-0"}>
                     <DayGrid cells={toCells!} selected={selected} onSelect={setSelected} drag={drag} />
                   </div>
-                  <div className={horizontal ? "w-1/2 shrink-0" : "w-full shrink-0"}>
+                  <div className={horizontal ? "w-1/2 shrink-0" : "h-1/2 w-full shrink-0"}>
                     <DayGrid cells={fromCells} selected={null} onSelect={() => {}} drag={drag} />
                   </div>
                 </>
               ) : showDual && slide.dir === "down" ? (
                 <>
-                  <div className="w-full shrink-0">
+                  <div className="h-1/2 w-full shrink-0">
                     <DayGrid cells={toCells!} selected={selected} onSelect={setSelected} drag={drag} />
                   </div>
-                  <div className="w-full shrink-0">
+                  <div className="h-1/2 w-full shrink-0">
                     <DayGrid cells={fromCells} selected={null} onSelect={() => {}} drag={drag} />
                   </div>
                 </>
               ) : showDual ? (
                 <>
-                  <div className={horizontal ? "w-1/2 shrink-0" : "w-full shrink-0"}>
+                  <div className={horizontal ? "w-1/2 shrink-0" : "h-1/2 w-full shrink-0"}>
                     <DayGrid cells={fromCells} selected={null} onSelect={() => {}} drag={drag} />
                   </div>
-                  <div className={horizontal ? "w-1/2 shrink-0" : "w-full shrink-0"}>
+                  <div className={horizontal ? "w-1/2 shrink-0" : "h-1/2 w-full shrink-0"}>
                     <DayGrid cells={toCells!} selected={selected} onSelect={setSelected} drag={drag} />
                   </div>
                 </>
@@ -824,9 +1255,9 @@ export function OverviewHeatmap({
 
         <button
           type="button"
-          aria-label="Nächster Monat"
+          aria-label="Next month"
           disabled={atMaxFuture}
-          onClick={goNextMonth}
+          onClick={() => goNextMonth()}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/45 transition duration-300 ease-out hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -838,9 +1269,9 @@ export function OverviewHeatmap({
       <div className="mt-1.5 flex justify-center">
         <button
           type="button"
-          aria-label="Nächste Woche"
+          aria-label="Next week"
           disabled={atMaxFuture}
-          onClick={goNextWeek}
+          onClick={() => goNextWeek()}
           className="flex h-7 w-7 items-center justify-center rounded-full text-white/45 transition duration-300 ease-out hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
         >
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -850,10 +1281,10 @@ export function OverviewHeatmap({
       </div>
 
       {selected && (
-        <div className="mt-3 rounded-[1.25rem] bg-white/[0.04] px-3 py-2.5 transition-opacity duration-300 ease-out">
+        <div className="mt-3 rounded-[1.25rem] bg-white/[0.04] px-3 py-2.5">
           <p className="text-[11px] text-white/40 tabular-nums">{selected}</p>
           {selectedLabels.length === 0 ? (
-            <p className="mt-1 text-[13px] text-white/35">Keine Übungen</p>
+            <p className="mt-1 text-[13px] text-white/35">No exercises</p>
           ) : (
             <ul className="mt-1.5 space-y-1">
               {selectedLabels.map((item) => (
@@ -867,7 +1298,7 @@ export function OverviewHeatmap({
                       item.kind === "planned" ? "text-[var(--accent)]" : "text-white/40"
                     }`}
                   >
-                    {item.kind === "planned" ? "geplant" : "geloggt"}
+                    {item.kind === "planned" ? "planned" : "logged"}
                   </span>
                 </li>
               ))}
@@ -877,7 +1308,7 @@ export function OverviewHeatmap({
       )}
 
       <p className="mt-2 text-center text-[10px] text-white/25">
-        Swipe ←→ Monat · ↕ Woche · Weiß = geloggt · Silber = geplant
+        Swipe left/right month · up/down week · white = logged · silver = planned
       </p>
     </div>
   );
@@ -892,10 +1323,10 @@ function DayGrid({
   cells: ReturnType<typeof weekGrid>;
   selected: string | null;
   onSelect: (next: string | null) => void;
-  drag: MutableRefObject<{ dx: number; dy: number }>;
+  drag: MutableRefObject<{ dx: number; dy: number; moved?: boolean }>;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-1.5">
+    <div className="grid h-full grid-cols-7 gap-1.5" style={{ minHeight: CAL_GRID_HEIGHT }}>
       {cells.map((cell) => {
         const hasLogged = cell.logged.length > 0;
         const hasPlanned = cell.planned.length > 0;
@@ -910,7 +1341,7 @@ function DayGrid({
               onSelect(isSelected ? null : cell.key);
             }}
             title={cell.key}
-            className={`flex min-h-[4.75rem] flex-col items-center rounded-[1rem] px-0.5 py-1.5 text-center transition-colors duration-300 ease-out ${
+            className={`flex min-h-[4.75rem] flex-col items-center rounded-[1rem] px-0.5 py-1.5 text-center transition-colors duration-200 ease-out ${
               isSelected
                 ? "bg-white/16 ring-1 ring-white/25"
                 : cell.isToday

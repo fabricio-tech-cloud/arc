@@ -59,40 +59,22 @@ type Overview = {
 };
 
 function formatVolume(n: number) {
-  return n.toLocaleString("de-DE");
+  return n.toLocaleString("en-US");
 }
 
 function relativeJournal(date: string | undefined) {
-  if (!date) return "Noch keine Daten";
+  if (!date) return "No data yet";
   const then = new Date(date + "T12:00:00").getTime();
   const days = Math.round((Date.now() - then) / 86400000);
-  if (days <= 0) return "Heute";
-  if (days === 1) return "Gestern";
-  return `vor ${days} Tagen`;
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
 }
 
 /** App entry at `/` — Overview is the start page. */
 export default function OverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // #region agent log
-  useEffect(() => {
-    fetch("http://127.0.0.1:7581/ingest/071442a9-190c-4bcb-8cac-9d7d41291d6c", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "15a754" },
-      body: JSON.stringify({
-        sessionId: "15a754",
-        runId: "post-fix",
-        hypothesisId: "A",
-        location: "page.tsx:OverviewPage",
-        message: "Overview start page mounted at /",
-        data: { path: window.location.pathname },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, []);
-  // #endregion
 
   useEffect(() => {
     fetch("/api/overview")
@@ -139,123 +121,135 @@ export default function OverviewPage() {
     : dayRing;
 
   return (
-    <div className="animate-rise mx-auto max-w-lg space-y-3">
+    <div className="animate-rise mx-auto max-w-lg space-y-3 lg:mx-auto lg:grid lg:max-w-5xl lg:grid-cols-12 lg:gap-6 lg:space-y-0">
       {error && (
-        <p className="rounded-[1.75rem] bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)]">{error}</p>
+        <p className="rounded-[1.75rem] bg-red-500/10 px-4 py-3 text-sm text-[var(--danger)] lg:col-span-12">
+          {error}
+        </p>
       )}
 
-      <ThisWeekStrip days={data?.thisWeek ?? []} today={data?.today ?? null} />
+      <div className="lg:col-span-12 lg:mt-10 lg:mb-2 lg:flex lg:justify-center">
+        <div className="w-full lg:max-w-2xl">
+          <ThisWeekStrip days={data?.thisWeek ?? []} today={data?.today ?? null} />
+        </div>
+      </div>
 
-      <TodayCard plan={data?.todayPlan ?? null} supplementImageSrc={supplementImageSrc} />
+      <div className="lg:col-span-12 lg:mb-2 lg:flex lg:justify-center">
+        <div className="w-full lg:max-w-2xl">
+          <TodayCard plan={data?.todayPlan ?? null} supplementImageSrc={supplementImageSrc} />
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          href={active ? `/workouts/${active.id}/live` : primary ? `/workouts/${primary.id}` : "/workouts"}
-          className="relative flex min-h-[11.5rem] flex-col justify-between overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
-        >
-          {active ? (
+      <div className="space-y-3 lg:col-span-12 lg:space-y-4">
+        <div className="grid grid-cols-2 gap-3 lg:gap-4">
+          <Link
+            href={active ? `/workouts/${active.id}/live` : primary ? `/workouts/${primary.id}` : "/workouts"}
+            className="relative flex min-h-[11.5rem] flex-col justify-between overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)] lg:min-h-[13rem] lg:border lg:border-white/10 lg:bg-black/50 lg:p-5 lg:hover:bg-black/60"
+          >
+            {active ? (
+              <span
+                className="pointer-events-none absolute right-1 top-1/2 z-0 -translate-y-1/2 select-none text-[1.65rem] font-normal leading-none tracking-wide text-white/[0.08]"
+                style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                aria-hidden
+              >
+                Active
+              </span>
+            ) : null}
+            <div className="relative z-10 flex items-start justify-between">
+              <ProgressRing value={workoutRing.value} max={workoutRing.max} />
+              <OverviewCardMenu />
+            </div>
+            <div className="relative z-10 pr-2">
+              <p className="text-[15px] font-medium leading-snug text-white">
+                {active
+                  ? active.title
+                  : primary?.title ?? "No workout yet"}
+              </p>
+              <p className="mt-1 text-[13px] text-white/40">
+                {active
+                  ? `${active.doneSets}/${active.totalSets} Sets · ${activePct}%`
+                  : primary?.weekday ?? "Tap to start"}
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/journal"
+            className="relative flex min-h-[11.5rem] flex-col overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)] lg:min-h-[13rem] lg:border lg:border-white/10 lg:bg-black/50 lg:p-5 lg:hover:bg-black/60"
+          >
             <span
-              className="pointer-events-none absolute right-1 top-1/2 z-0 -translate-y-1/2 select-none text-[1.65rem] font-normal leading-none tracking-wide text-white/[0.08]"
+              className="pointer-events-none absolute bottom-3 right-2 z-0 select-none text-[2.4rem] font-normal leading-none tracking-wide text-white/[0.08]"
               style={{ fontFamily: '"Times New Roman", Times, serif' }}
               aria-hidden
             >
-              Active
+              Sleep
             </span>
-          ) : null}
-          <div className="relative z-10 flex items-start justify-between">
-            <ProgressRing value={workoutRing.value} max={workoutRing.max} />
-            <OverviewCardMenu />
-          </div>
-          <div className="relative z-10 pr-2">
-            <p className="text-[15px] font-medium leading-snug text-white">
-              {active
-                ? active.title
-                : primary?.title ?? "Noch kein Workout"}
-            </p>
-            <p className="mt-1 text-[13px] text-white/40">
-              {active
-                ? `${active.doneSets}/${active.totalSets} Sets · ${activePct}%`
-                : primary?.weekday ?? "Tippe zum Starten"}
-            </p>
-          </div>
-        </Link>
-
-        <Link
-          href="/journal"
-          className="relative flex min-h-[11.5rem] flex-col overflow-hidden rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 transition hover:bg-[var(--bg-soft)]"
-        >
-          <span
-            className="pointer-events-none absolute bottom-3 right-2 z-0 select-none text-[2.4rem] font-normal leading-none tracking-wide text-white/[0.08]"
-            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-            aria-hidden
-          >
-            Sleep
-          </span>
-          <div className="relative z-10 flex items-start justify-between">
-            <p
-              className="text-[2rem] font-normal leading-none tracking-tight text-white"
-              style={{ fontFamily: '"Times New Roman", Times, serif' }}
-            >
-              {data?.latestJournal?.sleep_hours != null ? (
-                <>
-                  {data.latestJournal.sleep_hours}
-                  <span className="ml-1 text-base font-normal text-white/45">h</span>
-                </>
-              ) : (
-                <span className="text-white/35">—</span>
-              )}
-            </p>
-            <OverviewCardMenu />
-          </div>
-          <p className="relative z-10 mt-2 pr-10 text-[13px] text-white/40">
-            {relativeJournal(data?.latestJournal?.date)}
-          </p>
-        </Link>
-      </div>
-
-      <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4">
-        <OverviewHeatmap
-          heatMap={data?.heatMap ?? {}}
-          calendarDays={data?.calendarDays ?? {}}
-        />
-        <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-4">
-          <ProgressRing
-            value={secondary?.index ?? (primary ? 2 : 0)}
-            max={Math.max(4, data?.stats.workouts || 4)}
-          />
-          <Link href={secondary ? `/workouts/${secondary.id}` : "/workouts"} className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-medium text-white">
-              {secondary?.title ?? "Nächstes Workout planen"}
-            </p>
-            <p className="mt-0.5 text-[13px] text-white/40">
-              {secondary?.weekday ?? "Noch keine zweite Session"}
+            <div className="relative z-10 flex items-start justify-between">
+              <p
+                className="text-[2rem] font-normal leading-none tracking-tight text-white"
+                style={{ fontFamily: '"Times New Roman", Times, serif' }}
+              >
+                {data?.latestJournal?.sleep_hours != null ? (
+                  <>
+                    {data.latestJournal.sleep_hours}
+                    <span className="ml-1 text-base font-normal text-white/45">h</span>
+                  </>
+                ) : (
+                  <span className="text-white/35">—</span>
+                )}
+              </p>
+              <OverviewCardMenu />
+            </div>
+            <p className="relative z-10 mt-2 pr-10 text-[13px] text-white/40">
+              {relativeJournal(data?.latestJournal?.date)}
             </p>
           </Link>
-          <OverviewCardMenu />
         </div>
-      </div>
 
-      <div className="flex items-center justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] px-5 py-5">
-        <div>
-          <p className="text-[15px] font-medium text-white">Volumen</p>
-          <p className="mt-0.5 text-[13px] text-white/40">Letzte 7 Tage</p>
+        <div className="rounded-[1.75rem] bg-[var(--bg-elevated)] p-4 lg:border lg:border-white/10 lg:bg-black/50 lg:p-5">
+          <OverviewHeatmap
+            heatMap={data?.heatMap ?? {}}
+            calendarDays={data?.calendarDays ?? {}}
+          />
+          <div className="mt-5 flex items-center gap-3 border-t border-white/8 pt-4">
+            <ProgressRing
+              value={secondary?.index ?? (primary ? 2 : 0)}
+              max={Math.max(4, data?.stats.workouts || 4)}
+            />
+            <Link href={secondary ? `/workouts/${secondary.id}` : "/workouts"} className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-medium text-white">
+                {secondary?.title ?? "Plan next workout"}
+              </p>
+              <p className="mt-0.5 text-[13px] text-white/40">
+                {secondary?.weekday ?? "No second session yet"}
+              </p>
+            </Link>
+            <OverviewCardMenu />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <p className="text-[1.65rem] font-semibold tabular-nums tracking-tight text-white">
-            {formatVolume(data?.volume7d ?? 0)}
-            <span className="ml-1 text-sm font-normal text-white/45">kg</span>
-          </p>
-          <OverviewCardMenu />
-        </div>
-      </div>
 
-      <Link
-        href="/workouts"
-        className="flex min-h-[4.5rem] items-center justify-center rounded-[1.75rem] bg-[var(--bg-elevated)] text-3xl text-white/35 transition hover:bg-[var(--bg-soft)] hover:text-white/60"
-        aria-label="Neues Workout"
-      >
-        +
-      </Link>
+        <div className="flex items-center justify-between rounded-[1.75rem] bg-[var(--bg-elevated)] px-5 py-5 lg:border lg:border-white/10 lg:bg-black/50">
+          <div>
+            <p className="text-[15px] font-medium text-white">Volume</p>
+            <p className="mt-0.5 text-[13px] text-white/40">Last 7 days</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="text-[1.65rem] font-semibold tabular-nums tracking-tight text-white">
+              {formatVolume(data?.volume7d ?? 0)}
+              <span className="ml-1 text-sm font-normal text-white/45">kg</span>
+            </p>
+            <OverviewCardMenu />
+          </div>
+        </div>
+
+        <Link
+          href="/workouts"
+          className="flex min-h-[4.5rem] items-center justify-center rounded-[1.75rem] bg-[var(--bg-elevated)] text-3xl text-white/35 transition hover:bg-[var(--bg-soft)] hover:text-white/60 lg:border lg:border-white/10 lg:bg-black/50 lg:hover:bg-black/60"
+          aria-label="New workout"
+        >
+          +
+        </Link>
+      </div>
     </div>
   );
 }

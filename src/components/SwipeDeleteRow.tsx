@@ -10,7 +10,7 @@ export function SwipeDeleteRow({
   onOpenChange,
   onDelete,
   onTap,
-  actionLabel = "Löschen",
+  actionLabel = "Delete",
   children,
 }: {
   open: boolean;
@@ -134,11 +134,24 @@ export function SwipeDeleteRow({
     }
   }
 
+  // Hide Delete until a real swipe reveals it (transparent desktop cards otherwise show red through).
+  const revealProgress = Math.min(1, Math.max(0, -offset / DELETE_W));
+  const actionVisible = revealProgress > 0.02;
+
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 flex" style={{ width: DELETE_W }}>
+      <div
+        className="absolute inset-y-0 right-0 flex transition-opacity duration-150"
+        style={{
+          width: DELETE_W,
+          opacity: revealProgress,
+          pointerEvents: actionVisible && (open || revealProgress > 0.45) ? "auto" : "none",
+        }}
+        aria-hidden={!actionVisible}
+      >
         <button
           type="button"
+          tabIndex={actionVisible ? 0 : -1}
           onClick={onDelete}
           className="flex h-full w-full items-center justify-center bg-[#ff3b30] px-1 text-center text-[13px] font-semibold leading-tight text-white"
         >
