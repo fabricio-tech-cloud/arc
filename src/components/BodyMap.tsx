@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { BodyState, MuscleId } from "body-muscles";
+import { useArcDensity } from "@/components/ViewportDensity";
+import type { ArcDensity } from "@/lib/viewport";
 
 type View = "FRONT" | "BACK";
 
@@ -19,7 +21,7 @@ type Props = {
   focusIds?: string[];
 };
 
-/** Mobile (black shell): light silhouette so the figure stays visible */
+/** Mobile / compact (black shell): light silhouette so the figure stays visible */
 const MOBILE_INTENSITY: Record<number, string> = {
   0: "#c8ced6",
   1: "#e8e4f4",
@@ -34,7 +36,7 @@ const MOBILE_INTENSITY: Record<number, string> = {
   10: "#3b1f66",
 };
 
-/** Desktop: idle white → dark lilac by training intensity */
+/** Desktop / extended: idle white → dark lilac by training intensity */
 const DESKTOP_INTENSITY: Record<number, string> = {
   0: "#ffffff",
   1: "#f3f0ff",
@@ -49,21 +51,23 @@ const DESKTOP_INTENSITY: Record<number, string> = {
   10: "#2e184d",
 };
 
-function intensitySpectrumForViewport() {
-  if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
-    return DESKTOP_INTENSITY;
-  }
-  return MOBILE_INTENSITY;
+function spectrumForDensity(density: ArcDensity) {
+  return density === "extended" ? DESKTOP_INTENSITY : MOBILE_INTENSITY;
 }
 
-async function ensureArcIntensityColors(mod: typeof import("body-muscles")) {
-  Object.assign(mod.INTENSITY_COLORS, intensitySpectrumForViewport());
+function applyIntensityColors(
+  target: Record<number, string>,
+  density: ArcDensity,
+) {
+  const source = spectrumForDensity(density);
+  for (let i = 0; i <= 10; i++) {
+    target[i] = source[i];
+  }
 }
 
 async function applyFocusZoom(host: HTMLElement, focusIds: string[], view: View) {
   if (!focusIds.length) return;
   const mod = await import("body-muscles");
-  await ensureArcIntensityColors(mod);
   const muscles = view === "BACK" ? mod.BACK_MUSCLES : mod.FRONT_MUSCLES;
   const nameById = new Map(muscles.map((m) => [m.id, m.name]));
   const focusNames = new Set(
@@ -126,6 +130,7 @@ export function BodyMap({
   selectedId,
   focusIds,
 }: Props) {
+  const density = useArcDensity();
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<{
     update: (o: Record<string, unknown>) => void;
@@ -137,14 +142,17 @@ export function BodyMap({
   const clickRef = useRef(onMuscleClick);
   const interactiveRef = useRef(interactive);
   const focusRef = useRef(focusIds);
+  const bodyStateRef = useRef(bodyState);
   clickRef.current = onMuscleClick;
   interactiveRef.current = interactive;
   focusRef.current = focusIds;
+  bodyStateRef.current = bodyState;
 
   useEffect(() => {
     if (controlledView) setView(controlledView);
   }, [controlledView]);
 
+  // Recreate chart when compact ↔ extended changes so fills pick up the right palette
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return;
@@ -153,12 +161,13 @@ export function BodyMap({
     (async () => {
       const mod = await import("body-muscles");
       if (cancelled || !hostRef.current) return;
-      await ensureArcIntensityColors(mod);
+
+      applyIntensityColors(mod.INTENSITY_COLORS, density);
 
       const ViewSide = mod.ViewSide;
       chartRef.current = new mod.BodyChart(hostRef.current, {
         view: view === "BACK" ? ViewSide.BACK : ViewSide.FRONT,
-        bodyState,
+        bodyState: bodyStateRef.current,
         showViewLabel: size === "lg",
         className: `arc-body-map arc-body-map-${size}`,
         onMuscleClick(id: MuscleId, name: string) {
@@ -186,26 +195,9 @@ export function BodyMap({
       chartRef.current = null;
       setReady(false);
     };
+    // view is applied via update effect; density remounts for palette swap
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Swap intensity palette when crossing compact ↔ extended
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const sync = () => {
-      void import("body-muscles").then(async (mod) => {
-        await ensureArcIntensityColors(mod);
-        if (!chartRef.current) return;
-        chartRef.current.update({
-          view: view === "BACK" ? mod.ViewSide.BACK : mod.ViewSide.FRONT,
-          bodyState,
-        });
-      });
-    };
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, [view, bodyState]);
+  }, [density, size]);
 
   useEffect(() => {
     if (!ready || !chartRef.current) return;
@@ -216,8 +208,8 @@ export function BodyMap({
         selected: true,
       };
     }
-    import("body-muscles").then(async (mod) => {
-      await ensureArcIntensityColors(mod);
+    import("body-muscles").then((mod) => {
+      applyIntensityColors(mod.INTENSITY_COLORS, density);
       chartRef.current?.update({
         view: view === "BACK" ? mod.ViewSide.BACK : mod.ViewSide.FRONT,
         bodyState: next,
@@ -228,7 +220,7 @@ export function BodyMap({
         });
       }
     });
-  }, [view, bodyState, selectedId, ready, focusIds]);
+  }, [view, bodyState, selectedId, ready, focusIds, density]);
 
   return (
     <div className={`flex h-full flex-col ${className}`}>

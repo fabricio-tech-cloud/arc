@@ -15,7 +15,7 @@
   --danger: #ff6b6b;
   --font-display: "Syne", system-ui, sans-serif;
   --font-body: "Manrope", system-ui, sans-serif;
-  /* Compact (mobile) density — switches at 1024px */
+  /* Compact (mobile) density — switches at 1024px (see html[data-arc-density]) */
   --shell-pad-x: 1rem;
   --shell-pad-y: 1.5rem;
   --shell-pad-bottom: 6rem;

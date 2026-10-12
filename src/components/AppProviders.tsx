@@ -2,12 +2,15 @@
 
 import { SessionCartProvider } from "@/components/SessionCart";
 import { SessionCartFab } from "@/components/SessionCartFab";
+import { ViewportDensityProvider } from "@/components/ViewportDensity";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
-    <SessionCartProvider>
-      {children}
-      <SessionCartFab />
-    </SessionCartProvider>
+    <ViewportDensityProvider>
+      <SessionCartProvider>
+        {children}
+        <SessionCartFab />
+      </SessionCartProvider>
+    </ViewportDensityProvider>
   );
 }
