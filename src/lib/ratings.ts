@@ -147,6 +147,7 @@ const GROUP_FALLBACK: Record<MuscleGroupKey, { ratios: Standards; axis: RadarAxi
   Back: { ratios: [0.4, 0.65, 0.95, 1.25, 1.55], axis: "Pull" },
   Arms: { ratios: [0.2, 0.35, 0.5, 0.65, 0.8], axis: "Push" },
   Abdominals: { ratios: [0.3, 0.5, 0.7, 0.9, 1.1], axis: "Endurance" },
+  Field: { ratios: [0.4, 0.65, 0.95, 1.25, 1.55], axis: "Speed" },
 };
 
 export function groupForExerciseName(name: string): MuscleGroupKey | null {
