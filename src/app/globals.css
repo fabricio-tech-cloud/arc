@@ -30,10 +30,23 @@
     --shell-pad-y: 2rem;
     --shell-pad-bottom: 2.5rem;
     --content-gap: 1.5rem;
-    /* Desktop panels: same surface as Overview / Workouts */
+    /* Desktop panels + fields: translucent over painting */
+    --bg: rgba(0, 0, 0, 0.35);
     --bg-elevated: rgba(0, 0, 0, 0.5);
     --bg-soft: rgba(0, 0, 0, 0.62);
     --line: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Fields inherit transparent --bg; placeholders stay readable on the painting */
+  input,
+  textarea,
+  select {
+    color: var(--text);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgba(255, 255, 255, 0.35);
   }
 
   /* Soft rim on elevated rounded panels */
